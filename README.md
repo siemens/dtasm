@@ -1,4 +1,9 @@
-![Dtasm](docs/images/dtasm.svg)  
+<p align="center">
+<img style="width: 200px; padding: 10px;" src="docs/images/dtasm_logo.png">
+</p> 
+<p align="center">
+<img style="width: 250px; padding: 10px;" src="docs/images/dtasm.svg">
+</p>
 
 # Digital Twin Assembly
 
