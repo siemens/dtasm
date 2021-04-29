@@ -1,0 +1,169 @@
+namespace DtasmTypes;
+
+enum VariableType : byte {
+  DtasmReal, 
+  DtasmInt, 
+  DtasmBool,
+  DtasmString
+}
+
+table VariableValue {
+  real_val: double;
+  int_val: int;
+  bool_val: bool;
+  string_val: string;
+}
+
+enum Status : byte {
+  OK,
+  Warning,
+  Discard,
+  Error
+}
+
+enum LogLevel: byte {
+  Error = 0, 
+  Warn,
+  Info
+}
+
+table VarValues {
+    real_vals: [RealVal];
+    int_vals: [IntVal];
+    bool_vals: [BoolVal];
+    string_vals: [StringVal];
+}
+
+table RealVal {
+    id: int;
+    val: double;
+}
+
+table BoolVal {
+    id: int;
+    val: bool;
+}
+
+table IntVal {
+    id: int;
+    val: int;
+}
+
+table StringVal {
+    id: int;
+    val: string;
+}
+
+
+namespace DtasmModelDescription;
+
+enum CausalityType : byte { 
+    local,
+    parameter,
+    input, 
+    output
+}
+
+table ModelInfo {
+    name: string (required);
+    id: string;
+    description: string;
+    generation_tool: string;
+    generation_datetime: string;
+    name_delimiter: string;
+    capabilities: Capabilities;
+}
+
+table Capabilities {
+    can_handle_variable_step_size: bool = false;
+    can_reset_step: bool = false;
+    can_interpolate_inputs: bool = false;
+}
+
+table ModelVariable {
+    id: int (key);
+    name: string (required);
+    value_type: DtasmTypes.VariableType;
+    description: string;
+    unit: string;
+    causality: CausalityType;
+    derivative_of_id: int = -1;
+    default: DtasmTypes.VariableValue;
+}
+
+table ExperimentInfo {
+    timestep_min: double = 0; 
+    timestep_max: double = 0; 
+    timestep_default: double = 0;
+    starttime_default: double = 0; 
+    endtime_default: double = 0; 
+    time_unit: string;
+}
+
+table ModelDescription {
+    model: ModelInfo (required);
+    variables: [ModelVariable] (required);
+    experiment: ExperimentInfo;
+}
+
+
+namespace DtasmApi;
+
+rpc_service dtasmApi {
+    Init(InitReq): StatusRes;
+    DoStep(DoStepReq): DoStepRes;
+    GetValues(GetValuesReq): GetValuesRes;
+    SetValues(SetValuesReq): StatusRes;
+    ResetStep(ResetStepReq): StatusRes;
+    GetModelDescription(Void): DtasmModelDescription.ModelDescription;
+}
+
+table StatusRes {
+    status: DtasmTypes.Status;
+}
+
+table InitReq {
+    id: string (required);
+    starttime: double = 0;
+    endtime_set: bool = false;
+    endtime: double;
+    tolerance_set: bool = false;
+    tolerance: double;
+    loglevel_limit: DtasmTypes.LogLevel;
+    check_consistency: bool = true;
+    init_values: DtasmTypes.VarValues;
+}
+
+table DoStepReq {
+    current_time: double;
+    timestep: double;
+}
+
+table DoStepRes {
+    status: DtasmTypes.Status;
+    updated_time: double;
+}
+
+table GetValuesReq {
+    ids: [int];
+}
+
+table GetValuesRes {
+    status: DtasmTypes.Status;
+    current_time: double;
+    values: DtasmTypes.VarValues;
+}
+
+table SetValuesReq {
+    values: DtasmTypes.VarValues;
+}
+
+table ResetStepReq {
+    current_time: double;
+    reset_time: double;
+}
+
+table Void {}
+
+file_identifier "DTAS";
+root_type DtasmModelDescription.ModelDescription;

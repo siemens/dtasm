@@ -1,0 +1,149 @@
+{
+    "model": {
+        "name": "Double Pendulum",
+        "id": "{8ad29d6a-2525-4576-95be-e1facde6860e}",
+        "description": "Double pendulum simulation by solving equations of motion using a simple Runge-Kutta scheme (http://www.physics.usyd.edu.au/~wheat/dpend_html/solve_dpend.c)",
+        "generation_tool": "",
+        "generation_datetime": "2020-01-23 10:54:00 PM",
+        "name_delimiter": ".",
+        "capabilities": {
+            "can_handle_variable_step_size": true,
+            "can_reset_step": true,
+            "can_interpolate_inputs": false
+        }
+    },
+    "variables": [
+        {
+            "id": 1,
+            "name": "theta1",
+            "value_type": "DtasmReal",
+            "description": "Angle of first joint",
+            "causality": "output",
+            "unit": "rad",
+            "default": {
+                "real_val": 3.14159265359
+            }
+        },
+        {
+            "id": 2,
+            "name": "joint1.velocity",
+            "value_type": "DtasmReal",
+            "description": "Angular velocity of first joint",
+            "causality": "output",
+            "unit": "rad/s",
+            "default": {
+                "real_val": 0.0
+            }
+        },
+        {
+            "id": 3,
+            "name": "joint1.acceleration",
+            "value_type": "DtasmReal",
+            "description": "Additional acceleration of first joint",
+            "causality": "input",
+            "unit": "rad/s^2",
+            "default": {
+                "real_val": 0.0
+            }
+        },
+        {
+            "id": 4,
+            "name": "theta2",
+            "value_type": "DtasmReal",
+            "description": "Angle of second joint",
+            "causality": "output",
+            "unit": "rad",
+            "default": {
+                "real_val": 0.0174532925199
+            }
+        },
+        {
+            "id": 5,
+            "name": "joint2.velocity",
+            "value_type": "DtasmReal",
+            "description": "Angular velocity of second joint",
+            "causality": "output",
+            "unit": "rad/s",
+            "default": {
+                "real_val": 0.0
+            }
+        },
+        {
+            "id": 6,
+            "name": "joint2.acceleration",
+            "value_type": "DtasmReal",
+            "description": "Additional acceleration of second joint",
+            "causality": "input",
+            "unit": "rad/s^2",
+            "default": {
+                "real_val": 0.0
+            }
+        },
+        {
+            "id": 7,
+            "name": "m1_Value",
+            "value_type": "DtasmReal",
+            "description": "Mass of first pendulum",
+            "causality": "parameter",
+            "unit": "kg",
+            "default": {
+                "real_val": 1.0
+            }
+        },
+        {
+            "id": 8,
+            "name": "l1_Value",
+            "value_type": "DtasmReal",
+            "description": "Length of first pendulum",
+            "causality": "parameter",
+            "unit": "m",
+            "default": {
+                "real_val": 1.0
+            }
+        },
+        {
+            "id": 9,
+            "name": "m2_Value",
+            "value_type": "DtasmReal",
+            "description": "Mass of second pendulum",
+            "causality": "parameter",
+            "unit": "kg",
+            "default": {
+                "real_val": 1.0
+            }
+        },
+        {
+            "id": 10,
+            "name": "l2_Value",
+            "value_type": "DtasmReal",
+            "description": "Length of second pendulum",
+            "causality": "parameter",
+            "unit": "m",
+            "default": {
+                "real_val": 1.0
+            }
+        },
+        {
+            "id": 11,
+            "name": "theta1_0_Value",
+            "value_type": "DtasmReal",
+            "description": "Initial angle of first pendulum",
+            "causality": "parameter",
+            "unit": "rad"
+        },
+        {
+            "id": 12,
+            "name": "theta2_0_Value",
+            "value_type": "DtasmReal",
+            "description": "Initial angle of second pendulum",
+            "causality": "parameter",
+            "unit": "rad"
+        }
+    ],
+    "experiment": {
+        "timestep_default": 0.01,
+        "starttime_default": 0.0,
+        "endtime_default": 10.0,
+        "time_unit": "s"
+    }
+}
