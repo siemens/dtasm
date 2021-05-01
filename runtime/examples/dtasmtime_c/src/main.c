@@ -6,7 +6,7 @@
 #include <inttypes.h>
 #include <math.h>
 
-#include <sys/resource.h>
+// #include <sys/resource.h>
 
 #include <dtasmtime-c-api.h>
 
@@ -167,9 +167,9 @@ int main(int argc, char *argv[]) {
 
     double t = tmin;
 
-    struct rusage r_usage;
-    getrusage(RUSAGE_SELF,&r_usage);
-    printf("Memory usage: %ld kilobytes\n", r_usage.ru_maxrss);
+    // struct rusage r_usage;
+    // getrusage(RUSAGE_SELF,&r_usage);
+    // printf("Memory usage: %ld kilobytes\n", r_usage.ru_maxrss);
 
     for (int i=0; i<n_steps; ++i) {
         printf("Calling do_step...\n");
@@ -182,8 +182,8 @@ int main(int argc, char *argv[]) {
         }
         dtasmtime_getvalues_free(get_vals_res);
 
-        getrusage(RUSAGE_SELF,&r_usage);
-        printf("Memory usage: %ld kilobytes\n", r_usage.ru_maxrss);
+        // getrusage(RUSAGE_SELF,&r_usage);
+        // printf("Memory usage: %ld kilobytes\n", r_usage.ru_maxrss);
 
         t = dostep_res.updated_time;
     }

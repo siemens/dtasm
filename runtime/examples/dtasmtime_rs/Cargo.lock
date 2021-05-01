@@ -537,9 +537,7 @@ dependencies = [
 
 [[package]]
 name = "flatbuffers"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a788f068dd10687940565bf4b5480ee943176cbd114b12e811074bcf7c04e4b9"
+version = "0.6.2"
 dependencies = [
  "smallvec",
 ]
