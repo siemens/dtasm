@@ -27,6 +27,8 @@ type In4Out1T = dyn Fn(i32, i32, i32, i32) -> Result<i32, WT::Trap>;
 const WASM_PAGE_SIZE: u32 = 65536;
 const FB_BUILDER_SIZE: usize = 32768;
 const BASE_MEM_SIZE: i32 = 2048;
+
+/// dtasm interface functions
 static DTASM_EXPORTS: [&str; 8] = [
     "memory", 
     "alloc", 
@@ -37,6 +39,7 @@ static DTASM_EXPORTS: [&str; 8] = [
     "setValues",
     "doStep"];
 
+/// Engine for executing modules
 pub struct Engine {
     wt_store: WT::Store, 
     wt_linker: WT::Linker,
@@ -57,12 +60,14 @@ impl Engine {
     }
 }
 
+/// Represents a dtasm module in memory
 pub struct Module<'a> {
     wt_module: WT::Module,
     dtasm_engine: &'a Engine 
 }
 
 impl Module<'_> {
+    /// Loads a module from bytestream; note that the module needs to be tied to an engine at this point
     pub fn new(file: PathBuf, engine: &Engine) -> Result<Module, DtasmError> {
         let store = &engine.wt_store;
         let module = WT::Module::from_file(store.engine(), file)?;
@@ -81,6 +86,7 @@ impl Module<'_> {
         })
     }
 
+    /// Create an instance of the module
     pub fn instantiate(&self) -> Result<Instance, DtasmError> {
         let wt_instance = self.dtasm_engine.wt_linker.instantiate(&self.wt_module)?;
 
@@ -136,7 +142,7 @@ impl Module<'_> {
     }
 }
 
-
+/// Represents an instance of a loaded dtasm module
 pub struct Instance {
     memory: WT::Memory, 
     reactor_init_fn: Option<WT::Func>,
@@ -153,9 +159,11 @@ pub struct Instance {
 }
 
 impl Instance {
+    /// Retrieve the model description of this module by calling the `getModelDescription` 
+    /// export
     pub fn get_model_description(&mut self) -> Result<MD::ModelDescription, DtasmError> {
 
-        // if model description was already loaded, return from cache
+        // if model description was already loaded, return it from cache
         match &self.md {
             None => {}, 
             Some(mod_desc) => {
@@ -189,14 +197,21 @@ impl Instance {
         Ok(md)
     }
 
+    /// Initialize the instance with the given initial values and simulation parameters
+    ///
+    /// * `initial_vals` - initial values for the state variables
+    /// * `tmin` - initial time where simulation starts
+    /// * `tmax` - final time of the simulation
+    /// * `tol` - relative tolerance for numerical solver
+    /// * `log_level` - maximal level at which log messages should be reported
+    /// * `check` - whether to check validity of buffers (not currently implemented)
     pub fn initialize(&mut self, initial_vals: &DtasmVarValues, tmin: f64, tmax: Option<f64>, 
         tol: Option<f64>, log_level: LogLevel, check: bool) -> Result<Status, DtasmError>{
-        // ToDo: Check if state valid
+        // TODO: Check if state valid
 
         let md = &self.md.as_ref().ok_or(DtasmError::InvalidCallingOrder)?;
         
-        // (*self.reactor_init_fn)()?;
-        // If _initialize is exported, call it immediately
+        // if _initialize is exported, call it now to initialize WASI reactor
         match &self.reactor_init_fn {
             None => (),
             Some(f) => {
@@ -251,7 +266,7 @@ impl Instance {
             var_values.string_values.insert(*id, val.clone());
         }
 
-        // build the init request message
+        // build up the init request message
         let model_id = self.builder.create_string(&md.model.id);
 
         let mut real_offs: Vec<flatbuffers::WIPOffset<DTT::RealVal>> = Vec::new();
@@ -343,6 +358,9 @@ impl Instance {
         Ok(status_res)
     }
 
+    /// Retrieve values of the output and state variables in the current timestep. 
+    /// 
+    /// * `var_ids` - vector of variable ids for which values shall be retrieved
     pub fn get_values(&mut self, var_ids: &Vec<i32>) -> Result<GetValuesResponse, DtasmError> {
         // TODO: Check state
 
@@ -401,6 +419,10 @@ impl Instance {
         Ok(GetValuesResponse {status, current_time, values: var_values})
     }
 
+
+    /// Set values of input variables for the next timestep
+    ///
+    /// * `input_vals`: Values for the input variables
     pub fn set_values(&mut self, input_vals: &DtasmVarValues) -> Result<Status, DtasmError>{
         // TODO: check state
 
@@ -539,6 +561,10 @@ impl Instance {
         Ok(status_res)
     }
 
+    /// Simulate a time step
+    ///
+    /// * `current_time` - current time
+    /// * `timestep` - step to calculate forward in time
     pub fn do_step(&mut self, current_time: f64, timestep: f64) -> Result<DoStepResponse, DtasmError> {
         // TODO: Check correct state
 
@@ -660,6 +686,7 @@ impl Instance {
         Ok(var_types)
     }
 
+    /// Load a serialized state from file into this instance
     pub fn load_state(&self, filepath: PathBuf) -> Result<(), DtasmError>{
         let mut file = std::fs::File::open(filepath)?;
 
@@ -683,6 +710,7 @@ impl Instance {
         Ok(())
     }
 
+    /// Serialize the current state of the instance to a binary file
     pub fn save_state(&self, filepath: PathBuf) -> Result<(),DtasmError>{
         let mut file = std::fs::File::create(filepath)?;
 
@@ -694,6 +722,7 @@ impl Instance {
     }
 }
 
+/// A set of values of variables. Variables are identified by their unique ID given in the model description.
 #[derive(Debug,Clone)]
 pub struct DtasmVarValues {
     pub real_values: HashMap<i32, f64>,
@@ -713,6 +742,11 @@ impl DtasmVarValues{
     }
 }
 
+/// Response from a call to retrieve values of variables. 
+///
+/// * `status` - Status after the last time step computation.
+/// * `current_time` - Current internal time of the instance.
+/// * `values` - Current values of the requested variables requested.
 #[derive(Debug,Clone)]
 pub struct GetValuesResponse {
     pub status: Status, 
