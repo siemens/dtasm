@@ -1,8 +1,9 @@
 // Copyright 2021 Siemens AG
 // SPDX-License-Identifier: MIT
 
-use dtasmtime::runtime::{DtasmVarValues, LogLevel, Engine, Module};
+use dtasmtime::runtime::{Engine, Module};
 use dtasmtime::model_description as MD;
+use dtasmtime::types::{DtasmVarValues, LogLevel};
 
 use anyhow::Result;
 use structopt::StructOpt;
@@ -50,6 +51,7 @@ fn main() -> Result<()> {
     let mut inst = dtasm_module.instantiate()?;
 
     let md = inst.get_model_description()?;
+    println!("Received model description: {:#?}", md);
 
     let mut csv_wtr: Option<csv::Writer<File>> = None;
     let mut csv_var_names: Vec<(i32, String, MD::VariableType)> = Vec::new();
@@ -73,7 +75,7 @@ fn main() -> Result<()> {
         println!("Successfully loaded state from state.bin");
     }
 
-    // println!("Init return status: {:#?}", init_res);
+    println!("Init return status: {:#?}", _init_res);
 
     let mut var_ids = Vec::new();
     let mut var_names: Vec<String> = Vec::new();

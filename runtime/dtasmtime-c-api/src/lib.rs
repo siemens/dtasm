@@ -9,7 +9,8 @@ use std::collections::HashMap;
 
 use libc::{c_char};
 
-use dtasmtime::{model_description as MD, runtime::{Engine, Module, Instance, DtasmVarValues as VarValues}};
+use dtasmtime::{model_description as MD, runtime::{Engine, Module, Instance}};
+use dtasm_base::types::{DtasmVarValues as VarValues};
 
 pub mod c_types;
 use c_types::*;

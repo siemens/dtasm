@@ -1,9 +1,12 @@
 // Copyright 2021 Siemens AG
 // SPDX-License-Identifier: MIT
 
+use std::collections::HashMap;
+
 use dtasm_abi::dtasm_generated::dtasm_types as DTT;
 use dtasm_abi::dtasm_generated::dtasm_model_description as DTMD;
 use crate::model_description as MD;
+use crate::types::DtasmVarType;
 
 pub fn convert_model_description(md: &DTMD::ModelDescription) -> MD::ModelDescription {
     MD::ModelDescription {
@@ -91,4 +94,35 @@ pub fn convert_variable_value(value: Option<DTT::VariableValue>) -> Option<MD::V
         bool_val: value?.bool_val(), 
         string_val: String::from(value?.string_val().unwrap_or_default())
     })
+}
+
+pub fn collect_var_types(md: &MD::ModelDescription) -> HashMap<i32, DtasmVarType> {
+    let model_vars = &md.variables;
+    let mut var_types: HashMap<i32, DtasmVarType> = HashMap::new();
+
+    for model_var in model_vars.iter() {
+        var_types.insert(model_var.id,
+            DtasmVarType {
+                name: model_var.name.clone(), 
+                causality: model_var.causality.clone(),
+                value_type: model_var.value_type.clone(),
+                default: model_var.default.clone()
+            });
+    }
+
+    var_types
+}
+
+pub fn add_var_types(md: &MD::ModelDescription, var_types: &mut HashMap<i32, DtasmVarType>) {
+    let model_vars = &md.variables;
+
+    for model_var in model_vars.iter() {
+        var_types.insert(model_var.id,
+            DtasmVarType {
+                name: model_var.name.clone(), 
+                causality: model_var.causality.clone(),
+                value_type: model_var.value_type.clone(),
+                default: model_var.default.clone()
+            });
+    }
 }

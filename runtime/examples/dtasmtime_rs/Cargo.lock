@@ -440,11 +440,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "dtasm_base"
+version = "0.1.0"
+dependencies = [
+ "dtasm_abi",
+ "flatbuffers",
+ "thiserror",
+]
+
+[[package]]
 name = "dtasmtime"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "dtasm_abi",
+ "dtasm_base",
  "flatbuffers",
  "thiserror",
  "wasmtime",
