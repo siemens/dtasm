@@ -1,5 +1,5 @@
 [package]
-name = "dpend_rs"
+name = "dtasm_base"
 version = "0.1.0"
 authors = ["arrisde <maurice@nurfuerspam.de>"]
 edition = "2018"
@@ -7,8 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-once_cell = "1.8.0"
-dtasm_rs = { version = "0.1.0", path = "../dtasm_rs" }
+flatbuffers = { version = "0.6.2", path = "../../third_party/flatbuffers.git/rust/flatbuffers" }
+thiserror = "1.0"
 
-[lib]
-crate-type = ["cdylib"]
+dtasm_abi = { version = "0.1.0", path = "../../dtasm_abi" }

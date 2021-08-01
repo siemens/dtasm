@@ -10,6 +10,7 @@ build = "build.rs"
 [dependencies]
 libc = "0.2"
 dtasmtime = { version = "0.1.0", path = "../dtasmtime" }
+dtasm_base = { version = "0.1.0", path = "../../lib/dtasm_base_rs" }
 
 [build-dependencies]
 cbindgen = "0.17.0"

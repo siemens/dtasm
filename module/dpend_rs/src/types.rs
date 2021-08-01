@@ -1,10 +1,8 @@
 // Copyright 2021 Siemens AG
 // SPDX-License-Identifier: MIT
 
-use dtasm_abi::dtasm_generated::dtasm_model_description as DTMD;
-
 use std::collections::HashMap;
-
+use dtasm_rs::model_description::ModelDescription;
 
 #[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
 pub enum DpVar {TH1, TH2, W1, W2, A1, A2, M1, M2, L1, L2, TH10, TH20}
@@ -21,15 +19,13 @@ pub struct DpendParams
 #[derive(Debug)]
 pub struct DpVarMaps
 {
-    pub map_id_var: HashMap<i32, DpVar>,
-    pub map_var_id: HashMap<DpVar, i32>
+    pub map_id_var: HashMap<i32, DpVar>
 }
 
 impl DpVarMaps {
     pub fn new() -> DpVarMaps {
         DpVarMaps {
             map_id_var: HashMap::new(), 
-            map_var_id: HashMap::new()
         }
     }
 }
@@ -58,15 +54,13 @@ impl DpState {
     }
 }
 
-pub fn create_var_maps(dt_md: &DTMD::ModelDescription,
+pub fn create_var_maps(dt_md: &ModelDescription,
     var_maps: &mut DpVarMaps) {
+    let md_vars = &dt_md.variables;
 
-    let mod_desc_scalars = dt_md.variables();
-
-    for i in 0..mod_desc_scalars.len() {
-        let scalar_var = mod_desc_scalars.get(i);
-        let name = scalar_var.name();
-        let id = scalar_var.id();
+    for model_var in md_vars {
+        let name = &model_var.name;
+        let id = model_var.id;
 
         let dp_var: DpVar;
 
@@ -110,8 +104,28 @@ pub fn create_var_maps(dt_md: &DTMD::ModelDescription,
             continue;
         }
 
-        let id2 = id.clone();
         var_maps.map_id_var.insert(id, dp_var);
-        var_maps.map_var_id.insert(dp_var, id2);
+    }
+}
+
+pub fn create_default_vals(dt_md: &ModelDescription,
+    dp_state: &mut DpState) {
+
+    let mod_desc_vars = &dt_md.variables;
+    let var_maps = &dp_state.var_maps;
+    let default_vals = &mut dp_state.var_defaults;
+    let init_vals = &mut dp_state.var_values;
+
+    for scalar_var in mod_desc_vars {
+        let dp_var = var_maps.map_id_var.get(&scalar_var.id)
+            .expect(&format!("Unknown variable {}", scalar_var.name));
+
+        match &scalar_var.default {
+            None => {}, 
+            Some(def) => {
+                default_vals.insert(*dp_var, def.real_val);
+                init_vals.insert(*dp_var, def.real_val);
+            }
+        }
     }
 }

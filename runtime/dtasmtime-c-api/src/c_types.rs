@@ -134,14 +134,13 @@ pub enum DtasmStatus {
     DtasmFatal,
 }
 
-impl From<dtasmtime::runtime::Status> for DtasmStatus {
-    fn from(st: dtasmtime::runtime::Status) -> Self {
+impl From<dtasm_base::types::Status> for DtasmStatus {
+    fn from(st: dtasm_base::types::Status) -> Self {
         match st {
-            dtasmtime::runtime::Status::OK => DtasmStatus::DtasmOK,
-            dtasmtime::runtime::Status::Warning => DtasmStatus::DtasmWarning,
-            dtasmtime::runtime::Status::Discard => DtasmStatus::DtasmDiscard,
-            dtasmtime::runtime::Status::Error => DtasmStatus::DtasmError,
-            dtasmtime::runtime::Status::Fatal => DtasmStatus::DtasmFatal,
+            dtasm_base::types::Status::OK => DtasmStatus::DtasmOK,
+            dtasm_base::types::Status::Warning => DtasmStatus::DtasmWarning,
+            dtasm_base::types::Status::Discard => DtasmStatus::DtasmDiscard,
+            dtasm_base::types::Status::Error => DtasmStatus::DtasmError,
         }
     }
 }
@@ -153,12 +152,12 @@ pub enum DtasmLogLevel {
     DtasmLogInfo
 }
 
-impl Into<dtasmtime::runtime::LogLevel> for DtasmLogLevel {
-    fn into(self) -> dtasmtime::runtime::LogLevel {
+impl Into<dtasm_base::types::LogLevel> for DtasmLogLevel {
+    fn into(self) -> dtasm_base::types::LogLevel {
         match self {
-            DtasmLogLevel::DtasmLogError => dtasmtime::runtime::LogLevel::Error,
-            DtasmLogLevel::DtasmLogWarn => dtasmtime::runtime::LogLevel::Warn,
-            DtasmLogLevel::DtasmLogInfo => dtasmtime::runtime::LogLevel::Info,
+            DtasmLogLevel::DtasmLogError => dtasm_base::types::LogLevel::Error,
+            DtasmLogLevel::DtasmLogWarn => dtasm_base::types::LogLevel::Warn,
+            DtasmLogLevel::DtasmLogInfo => dtasm_base::types::LogLevel::Info,
         }
     }
 }

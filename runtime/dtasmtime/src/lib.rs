@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 pub mod runtime;
-pub mod errors;
-pub mod model_description;
-
-mod model_converter;
+mod errors;
+pub use dtasm_base::model_description;
+pub use dtasm_base::types;

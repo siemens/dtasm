@@ -15,9 +15,12 @@ use dtasm_abi::dtasm_generated::dtasm_api as DTAPI;
 use dtasm_abi::dtasm_generated::dtasm_types as DTT;
 use dtasm_abi::dtasm_generated::dtasm_model_description as DTMD;
 
-use crate::errors::DtasmError;
-use crate::model_converter::convert_model_description;
-use crate::model_description as MD;
+use crate::errors::DtasmtimeError;
+use DtasmtimeError::DtasmError as DTERR; 
+use dtasm_base::model_conversion::convert_model_description;
+use dtasm_base::model_description as MD;
+use dtasm_base::types::{DtasmVarType,DtasmVarValues,LogLevel,Status,GetValuesResponse,DoStepResponse};
+use dtasm_base::errors::DtasmError;
 
 type In1Out1T = dyn Fn(i32,) -> Result<i32, WT::Trap>;
 type In1Out0T = dyn Fn(i32,) -> Result<(), WT::Trap>;
@@ -27,6 +30,8 @@ type In4Out1T = dyn Fn(i32, i32, i32, i32) -> Result<i32, WT::Trap>;
 const WASM_PAGE_SIZE: u32 = 65536;
 const FB_BUILDER_SIZE: usize = 32768;
 const BASE_MEM_SIZE: i32 = 2048;
+
+/// dtasm interface functions
 static DTASM_EXPORTS: [&str; 8] = [
     "memory", 
     "alloc", 
@@ -37,6 +42,7 @@ static DTASM_EXPORTS: [&str; 8] = [
     "setValues",
     "doStep"];
 
+/// Engine for executing modules
 pub struct Engine {
     wt_store: WT::Store, 
     wt_linker: WT::Linker,
@@ -57,19 +63,21 @@ impl Engine {
     }
 }
 
+/// Represents a dtasm module in memory
 pub struct Module<'a> {
     wt_module: WT::Module,
     dtasm_engine: &'a Engine 
 }
 
 impl Module<'_> {
-    pub fn new(file: PathBuf, engine: &Engine) -> Result<Module, DtasmError> {
+    /// Loads a module from bytestream; note that the module needs to be tied to an engine at this point
+    pub fn new(file: PathBuf, engine: &Engine) -> Result<Module, DtasmtimeError> {
         let store = &engine.wt_store;
         let module = WT::Module::from_file(store.engine(), file)?;
 
         for name in DTASM_EXPORTS.iter() {
             if module.get_export(name).is_none() {
-                return Err(DtasmError::MissingDtasmExport(name.to_string()));
+                return Err(DTERR(DtasmError::MissingDtasmExport(name.to_string())));
             }
         }
 
@@ -81,7 +89,8 @@ impl Module<'_> {
         })
     }
 
-    pub fn instantiate(&self) -> Result<Instance, DtasmError> {
+    /// Create an instance of the module
+    pub fn instantiate(&self) -> Result<Instance, DtasmtimeError> {
         let wt_instance = self.dtasm_engine.wt_linker.instantiate(&self.wt_module)?;
 
         let reactor_init = wt_instance
@@ -89,34 +98,34 @@ impl Module<'_> {
 
         let memory = wt_instance
             .get_memory("memory")
-            .ok_or(DtasmError::MissingDtasmExport("memory".to_string()))?;
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("memory".to_string())))?;
         let alloc = wt_instance
             .get_func("alloc")
-            .ok_or(DtasmError::MissingDtasmExport("alloc".to_string()))?
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("alloc".to_string())))?
             .get1::<i32, i32>()?;
         let dealloc = wt_instance
             .get_func("dealloc")
-            .ok_or(DtasmError::MissingDtasmExport("dealloc".to_string()))?
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("dealloc".to_string())))?
             .get1::<i32, ()>()?;
         let get_model_description = wt_instance
             .get_func("getModelDescription")
-            .ok_or(DtasmError::MissingDtasmExport("getModelDescription".to_string()))?
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("getModelDescription".to_string())))?
             .get2::<i32, i32, i32>()?;
         let init = wt_instance
             .get_func("init")
-            .ok_or(DtasmError::MissingDtasmExport("init".to_string()))?
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("init".to_string())))?
             .get4::<i32, i32, i32, i32, i32>()?;
         let get_values = wt_instance
             .get_func("getValues")
-            .ok_or(DtasmError::MissingDtasmExport("getValues".to_string()))?
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("getValues".to_string())))?
             .get4::<i32, i32, i32, i32, i32>()?;
         let set_values = wt_instance
             .get_func("setValues")
-            .ok_or(DtasmError::MissingDtasmExport("setValues".to_string()))?
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("setValues".to_string())))?
             .get4::<i32, i32, i32, i32, i32>()?;
         let do_step = wt_instance
             .get_func("doStep")
-            .ok_or(DtasmError::MissingDtasmExport("doStep".to_string()))?
+            .ok_or(DTERR(DtasmError::MissingDtasmExport("doStep".to_string())))?
             .get4::<i32, i32, i32, i32, i32>()?;
 
         Ok(Instance {
@@ -136,7 +145,7 @@ impl Module<'_> {
     }
 }
 
-
+/// Represents an instance of a loaded dtasm module
 pub struct Instance {
     memory: WT::Memory, 
     reactor_init_fn: Option<WT::Func>,
@@ -153,9 +162,11 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub fn get_model_description(&mut self) -> Result<MD::ModelDescription, DtasmError> {
+    /// Retrieve the model description of this module by calling the `getModelDescription` 
+    /// export
+    pub fn get_model_description(&mut self) -> Result<MD::ModelDescription, DtasmtimeError> {
 
-        // if model description was already loaded, return from cache
+        // if model description was already loaded, return it from cache
         match &self.md {
             None => {}, 
             Some(mod_desc) => {
@@ -189,14 +200,21 @@ impl Instance {
         Ok(md)
     }
 
+    /// Initialize the instance with the given initial values and simulation parameters
+    ///
+    /// * `initial_vals` - initial values for the state variables
+    /// * `tmin` - initial time where simulation starts
+    /// * `tmax` - final time of the simulation
+    /// * `tol` - relative tolerance for numerical solver
+    /// * `log_level` - maximal level at which log messages should be reported
+    /// * `check` - whether to check validity of buffers (not currently implemented)
     pub fn initialize(&mut self, initial_vals: &DtasmVarValues, tmin: f64, tmax: Option<f64>, 
-        tol: Option<f64>, log_level: LogLevel, check: bool) -> Result<Status, DtasmError>{
-        // ToDo: Check if state valid
+        tol: Option<f64>, log_level: LogLevel, check: bool) -> Result<Status, DtasmtimeError>{
+        // TODO: Check if state valid
 
-        let md = &self.md.as_ref().ok_or(DtasmError::InvalidCallingOrder)?;
+        let md = &self.md.as_ref().ok_or(DTERR(DtasmError::InvalidCallingOrder))?;
         
-        // (*self.reactor_init_fn)()?;
-        // If _initialize is exported, call it immediately
+        // if _initialize is exported, call it now to initialize WASI reactor
         match &self.reactor_init_fn {
             None => (),
             Some(f) => {
@@ -216,42 +234,42 @@ impl Instance {
         // collect all initial values that are explicitly set and check their types
         for (id, val) in &initial_vals.real_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmReal { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.real_values.insert(*id, *val);
         }
         for (id, val) in &initial_vals.int_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmInt { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.int_values.insert(*id, *val);
         }
         for (id, val) in &initial_vals.bool_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmBool { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.bool_values.insert(*id, *val);
         }
         for (id, val) in &initial_vals.string_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmString { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.string_values.insert(*id, val.clone());
         }
 
-        // build the init request message
+        // build up the init request message
         let model_id = self.builder.create_string(&md.model.id);
 
         let mut real_offs: Vec<flatbuffers::WIPOffset<DTT::RealVal>> = Vec::new();
@@ -326,7 +344,7 @@ impl Instance {
         let init_res_ptr = (*self.alloc_fn)(size)? as usize;
         let size_out = (self.init_fn)(init_req_ptr as i32, init_req_len as i32, init_res_ptr as i32, size)?;
 
-        if size_out > size { return Err(DtasmError::DtasmInternalError(format!("Unexpected size returned from init request: {}", size_out))); }
+        if size_out > size { return Err(DTERR(DtasmError::DtasmInternalError(format!("Unexpected size returned from init request: {}", size_out)))); }
 
         let res_bytes = unsafe {
             &self.memory.data_unchecked()[init_res_ptr..init_res_ptr+(size_out as usize)] 
@@ -343,16 +361,19 @@ impl Instance {
         Ok(status_res)
     }
 
-    pub fn get_values(&mut self, var_ids: &Vec<i32>) -> Result<GetValuesResponse, DtasmError> {
+    /// Retrieve values of the output and state variables in the current timestep. 
+    /// 
+    /// * `var_ids` - vector of variable ids for which values shall be retrieved
+    pub fn get_values(&mut self, var_ids: &Vec<i32>) -> Result<GetValuesResponse, DtasmtimeError> {
         // TODO: Check state
 
         // check if all requested var ids are valid
         for id in var_ids.iter() {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].causality == MD::CausalityType::Input {
-                return Err(DtasmError::VariableCausalityMismatch(MD::CausalityType::Input,*id)); 
+                return Err(DTERR(DtasmError::VariableCausalityMismatch(MD::CausalityType::Input,*id))); 
             }
         }
 
@@ -401,7 +422,11 @@ impl Instance {
         Ok(GetValuesResponse {status, current_time, values: var_values})
     }
 
-    pub fn set_values(&mut self, input_vals: &DtasmVarValues) -> Result<Status, DtasmError>{
+
+    /// Set values of input variables for the next timestep
+    ///
+    /// * `input_vals`: Values for the input variables
+    pub fn set_values(&mut self, input_vals: &DtasmVarValues) -> Result<Status, DtasmtimeError>{
         // TODO: check state
 
         // start with default values from model description
@@ -410,49 +435,49 @@ impl Instance {
         // collect set values and check their existence and types
         for (id, val) in &input_vals.real_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].causality != MD::CausalityType::Input { 
-                return Err(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id)); 
+                return Err(DTERR(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmReal { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.real_values.insert(*id, *val);
         }
         for (id, val) in &input_vals.int_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].causality != MD::CausalityType::Input { 
-                return Err(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id)); 
+                return Err(DTERR(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmInt { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.int_values.insert(*id, *val);
         }
         for (id, val) in &input_vals.bool_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].causality != MD::CausalityType::Input { 
-                return Err(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id)); 
+                return Err(DTERR(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmBool { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.bool_values.insert(*id, *val);
         }
         for (id, val) in &input_vals.string_values {
             if !self.var_types.contains_key(id) { 
-                return Err(DtasmError::UnknownVariableId(*id)); 
+                return Err(DTERR(DtasmError::UnknownVariableId(*id))); 
             }
             if self.var_types[id].causality != MD::CausalityType::Input { 
-                return Err(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id)); 
+                return Err(DTERR(DtasmError::VariableCausalityInvalidForSet(self.var_types[id].causality, *id))); 
             }
             if self.var_types[id].value_type != MD::VariableType::DtasmString { 
-                return Err(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id)); 
+                return Err(DTERR(DtasmError::VariableTypeMismatch(self.var_types[id].value_type, *id))); 
             }
             var_values.string_values.insert(*id, val.clone());
         }
@@ -522,7 +547,7 @@ impl Instance {
         let set_res_ptr = (*self.alloc_fn)(size)? as usize;
         let size_out = (self.set_values_fn)(set_req_ptr as i32, set_req_len as i32, set_res_ptr as i32, size)?;
 
-        if size_out > size { return Err(DtasmError::DtasmInternalError(format!("Unexpected size returned from setValues request: {}", size_out))); }
+        if size_out > size { return Err(DTERR(DtasmError::DtasmInternalError(format!("Unexpected size returned from setValues request: {}", size_out)))); }
 
         let res_bytes = unsafe {
             &self.memory.data_unchecked()[set_res_ptr..set_res_ptr+(size_out as usize)] 
@@ -539,7 +564,11 @@ impl Instance {
         Ok(status_res)
     }
 
-    pub fn do_step(&mut self, current_time: f64, timestep: f64) -> Result<DoStepResponse, DtasmError> {
+    /// Simulate a time step
+    ///
+    /// * `current_time` - current time
+    /// * `timestep` - step to calculate forward in time
+    pub fn do_step(&mut self, current_time: f64, timestep: f64) -> Result<DoStepResponse, DtasmtimeError> {
         // TODO: Check correct state
 
         // build doStep request message
@@ -562,7 +591,7 @@ impl Instance {
         let dostep_res_ptr = (*self.alloc_fn)(size)? as usize;
         let size_out = (*self.do_step_fn)(dostep_req_ptr as i32, dostep_req_len as i32, dostep_res_ptr as i32, size)?;
         
-        if size_out > size { return Err(DtasmError::DtasmInternalError(format!("Unexpected size returned from doStep request: {}", size_out))); }
+        if size_out > size { return Err(DTERR(DtasmError::DtasmInternalError(format!("Unexpected size returned from doStep request: {}", size_out)))); }
     
         let res_bytes = unsafe {
             &self.memory.data_unchecked()[dostep_res_ptr..dostep_res_ptr+size_out as usize]
@@ -643,7 +672,7 @@ impl Instance {
     }
 
 
-    fn collect_var_types(md: &MD::ModelDescription) -> Result<HashMap<i32, DtasmVarType>, DtasmError> {
+    fn collect_var_types(md: &MD::ModelDescription) -> Result<HashMap<i32, DtasmVarType>, DtasmtimeError> {
         let model_vars = &md.variables;
         let mut var_types: HashMap<i32, DtasmVarType> = HashMap::new();
 
@@ -660,7 +689,8 @@ impl Instance {
         Ok(var_types)
     }
 
-    pub fn load_state(&self, filepath: PathBuf) -> Result<(), DtasmError>{
+    /// Load a serialized state from file into this instance
+    pub fn load_state(&self, filepath: PathBuf) -> Result<(), DtasmtimeError>{
         let mut file = std::fs::File::open(filepath)?;
 
         let mut buffer = Vec::new();
@@ -683,7 +713,8 @@ impl Instance {
         Ok(())
     }
 
-    pub fn save_state(&self, filepath: PathBuf) -> Result<(),DtasmError>{
+    /// Serialize the current state of the instance to a binary file
+    pub fn save_state(&self, filepath: PathBuf) -> Result<(),DtasmtimeError>{
         let mut file = std::fs::File::create(filepath)?;
 
         unsafe {
@@ -692,70 +723,4 @@ impl Instance {
 
         Ok(())
     }
-}
-
-#[derive(Debug,Clone)]
-pub struct DtasmVarValues {
-    pub real_values: HashMap<i32, f64>,
-    pub int_values: HashMap<i32, i32>,
-    pub bool_values: HashMap<i32, bool>,
-    pub string_values: HashMap<i32, String>,
-}
-
-impl DtasmVarValues{
-    pub fn new() -> DtasmVarValues {
-        DtasmVarValues {
-            real_values: HashMap::new(),
-            int_values: HashMap::new(),
-            bool_values: HashMap::new(),
-            string_values: HashMap::new()
-        }
-    }
-}
-
-#[derive(Debug,Clone)]
-pub struct GetValuesResponse {
-    pub status: Status, 
-    pub current_time: f64,
-    pub values: DtasmVarValues
-}
-
-struct DtasmVarType {
-    pub name: String, 
-    pub value_type: MD::VariableType,
-    pub causality: MD::CausalityType,
-    pub default: Option<MD::VariableValue>
-}
-
-#[derive(Debug,Clone)]
-pub enum LogLevel {
-    Error,
-    Warn,
-    Info
-}
-
-#[derive(Debug,Clone)]
-pub enum Status {
-    OK,
-    Warning,
-    Discard,
-    Error,
-    Fatal
-}
-
-impl From<DTT::Status> for Status {
-    fn from(st: DTT::Status) -> Self {
-        match st {
-            DTT::Status::OK => Status::OK, 
-            DTT::Status::Warning => Status::Warning, 
-            DTT::Status::Discard => Status::Discard, 
-            DTT::Status::Error => Status::Error
-        }
-    }
-}
-
-#[derive(Debug,Clone)]
-pub struct DoStepResponse {
-    pub status: Status, 
-    pub updated_time: f64
 }
