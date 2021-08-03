@@ -17,8 +17,10 @@ pub enum DtasmError {
     VariableTypeMismatch(VariableType, i32), 
     #[error("Unexpected variable causality `{0:#?}` for requested variable id `{1}`")]
     VariableCausalityMismatch(CausalityType, i32), 
-    #[error("Causality `{0:#?}` not allowed to set value for requested variable id `{1}`")]
+    #[error("Causality `{0:#?}` does not allow to set value for requested variable id `{1}`")]
     VariableCausalityInvalidForSet(CausalityType, i32), 
+    #[error("Causality does not allow to set value for requested variable id `{0}`")]
+    VariableInvalidForSet(i32), 
     #[error("Internal error in dtasm module: `{0}`")]
     DtasmInternalError(String), 
     #[error("Invalid variable value `{0}` for variable id `{1}`")]
