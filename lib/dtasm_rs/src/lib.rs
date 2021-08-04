@@ -1,3 +1,6 @@
+// Copyright 2021 Siemens AG
+// SPDX-License-Identifier: MIT
+
 pub mod interface;
 pub use dtasm_base::{types,model_description,errors};
 

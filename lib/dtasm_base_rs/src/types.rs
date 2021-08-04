@@ -1,3 +1,6 @@
+// Copyright 2021 Siemens AG
+// SPDX-License-Identifier: MIT
+
 use crate::model_description as MD;
 use dtasm_abi::dtasm_generated::dtasm_types as DTT;
 

@@ -1,3 +1,6 @@
+// Copyright 2021 Siemens AG
+// SPDX-License-Identifier: MIT
+
 use dtasm_base::types::{DtasmVarValues,LogLevel,Status,GetValuesResponse,DoStepResponse};
 use dtasm_base::model_description::ModelDescription;
 use dtasm_base::errors::DtasmError;

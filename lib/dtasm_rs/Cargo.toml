@@ -12,4 +12,4 @@ once_cell = "1.8.0"
 thiserror = "1.0.26"
 flatbuffers = { version = "0.6.2", path = "../../third_party/flatbuffers.git/rust/flatbuffers" }
 dtasm_abi = { version = "0.1.0", path = "../../dtasm_abi" }
-dtasm_base = { version = "0.1.0", path = "../../lib/dtasm_base_rs" }
+dtasm_base = { version = "0.1.0", path = "../dtasm_base_rs" }
