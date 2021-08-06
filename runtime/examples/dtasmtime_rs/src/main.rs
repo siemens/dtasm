@@ -63,7 +63,12 @@ fn main() -> Result<()> {
     }
     write_header(&mut csv_wtr, &md.variables, &mut csv_var_names)?;
 
-    let mut init_vals = extract_init_vals(&md.variables);
+    let mut init_vals = extract_default_vals(&md.variables, 
+        &vec![ MD::CausalityType::Local, MD::CausalityType::Input ]);
+
+    let def_inputs = extract_default_vals(&md.variables, 
+        &vec![ MD::CausalityType::Input ]);
+
     let cmd_vals = parse_cmd_parameters(&opt.parameters, &md.variables);
     update_var_values(&mut init_vals, &cmd_vals);
 
@@ -98,6 +103,7 @@ fn main() -> Result<()> {
     write_record(&mut csv_wtr, &csv_var_names, &get_vals.values, get_vals.current_time)?;
 
     for _ in 0..n_steps {
+        inst.set_values(&def_inputs)?;
         let dostep_res = inst.do_step(t,dt)?;
         get_vals = inst.get_values(&var_ids)?;
         write_record(&mut csv_wtr, &csv_var_names, &get_vals.values, get_vals.current_time)?;
@@ -112,25 +118,28 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn extract_init_vals(vars: &Vec<MD::ModelVariable>) -> DtasmVarValues {
-    let mut init_vals = DtasmVarValues::new();
+fn extract_default_vals(vars: &Vec<MD::ModelVariable>, causalities: &Vec<MD::CausalityType>) -> DtasmVarValues {
+    let mut default_vals = DtasmVarValues::new();
 
     for variable in vars {
-        // if no initial value given, set default if present
+        if !causalities.contains(&variable.causality) {
+            continue;
+        }
+
         match &variable.default {
             None => {}, 
             Some(default) => {
                 match variable.value_type {
-                    MD::VariableType::DtasmReal => { init_vals.real_values.insert(variable.id, default.real_val); },
-                    MD::VariableType::DtasmInt => { init_vals.int_values.insert(variable.id, default.int_val); },
-                    MD::VariableType::DtasmBool => { init_vals.bool_values.insert(variable.id, default.bool_val); },
-                    MD::VariableType::DtasmString => { init_vals.string_values.insert(variable.id, default.string_val.clone()); },
+                    MD::VariableType::DtasmReal => { default_vals.real_values.insert(variable.id, default.real_val); },
+                    MD::VariableType::DtasmInt => { default_vals.int_values.insert(variable.id, default.int_val); },
+                    MD::VariableType::DtasmBool => { default_vals.bool_values.insert(variable.id, default.bool_val); },
+                    MD::VariableType::DtasmString => { default_vals.string_values.insert(variable.id, default.string_val.clone()); },
                 };
             }
         };
     }
 
-    init_vals
+    default_vals
 }
 
 fn parse_cmd_parameters(params: &Vec<String>, vars: &Vec<MD::ModelVariable>) -> DtasmVarValues {
