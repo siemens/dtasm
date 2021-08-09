@@ -3,9 +3,14 @@
 
 mod types;
 
+extern crate alloc;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use alloc::format;
+
 use std::sync::Mutex;
 
-use once_cell::sync::Lazy;
+use once_cell::sync::{OnceCell,Lazy};
 
 use dtasm_rs::interface::DtasmIf;
 use dtasm_rs::model_description::{ModelDescription};
@@ -18,7 +23,8 @@ use types::{AddState, AddVar};
 // dtasm_module!(DpendMod)
 #[no_mangle]
 pub static mut SIM_MODULE: Lazy<Box<dyn DtasmIf + Sync + Send>> = Lazy::new(|| Box::new(AddMod));
-static ADD_STATE: Lazy<Mutex<AddState>> = Lazy::new(|| Mutex::new(AddState::new()));
+static ADD_STATE: OnceCell<Mutex<AddState>> = OnceCell::new();
+
 
 pub struct AddMod;
 
@@ -30,7 +36,9 @@ impl DtasmIf for AddMod {
     fn initialize(&mut self, md: &ModelDescription, _initial_vals: &dtasm_rs::types::DtasmVarValues, tmin: f64, _tmax: Option<f64>, 
         _tol: Option<f64>, _log_level: dtasm_rs::types::LogLevel, _check: bool) -> Result<Status, DtasmError> {
         
-        let mut state = ADD_STATE.lock().unwrap();
+        ADD_STATE.set(Mutex::new(AddState::new())).unwrap();
+        let mut state = ADD_STATE.get().unwrap().lock().unwrap();
+
         state.t = tmin;
 
         types::create_var_maps(&md, &mut state.var_maps);
@@ -39,7 +47,7 @@ impl DtasmIf for AddMod {
     }
 
     fn get_values(&self, var_ids: &Vec<i32>) -> Result<GetValuesResponse, DtasmError> {
-        let state = ADD_STATE.lock().unwrap();
+        let state = ADD_STATE.get().unwrap().lock().unwrap();
 
         let mut var_vals = DtasmVarValues::new();
 
@@ -74,7 +82,7 @@ impl DtasmIf for AddMod {
     }
 
     fn set_values(&mut self, input_vals: &dtasm_rs::types::DtasmVarValues) -> Result<dtasm_rs::types::Status, dtasm_rs::errors::DtasmError> {
-        let mut state = ADD_STATE.lock().unwrap();
+        let mut state = ADD_STATE.get().unwrap().lock().unwrap();
 
         for id in input_vals.real_values.keys(){
             let var = state.var_maps.map_id_var[id];
@@ -105,7 +113,7 @@ impl DtasmIf for AddMod {
 
     fn do_step(&mut self, _current_time: f64, timestep: f64) -> Result<dtasm_rs::types::DoStepResponse, dtasm_rs::errors::DtasmError> {
     
-        let mut state = ADD_STATE.lock().unwrap();
+        let mut state = ADD_STATE.get().unwrap().lock().unwrap();
 
         let r_out = state.real_values[&AddVar::RI1] + state.real_values[&AddVar::RI2];
         state.real_values.insert(AddVar::RO, r_out);

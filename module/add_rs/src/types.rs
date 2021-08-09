@@ -1,22 +1,26 @@
 // Copyright 2021 Siemens AG
 // SPDX-License-Identifier: MIT
 
-use std::{collections::HashMap, hash::Hash};
+extern crate alloc;
+use alloc::borrow::ToOwned;
+use alloc::collections::BTreeMap;
+use alloc::string::String;
+
 use dtasm_rs::model_description::ModelDescription;
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, PartialOrd, Ord, PartialEq, Clone, Copy, Debug)]
 pub enum AddVar {RI1, RI2, RO, II1, II2, IO, BI1, BI2, BO, SI1, SI2, SO}
 
 #[derive(Debug)]
 pub struct AddVarMaps
 {
-    pub map_id_var: HashMap<i32, AddVar>
+    pub map_id_var: BTreeMap<i32, AddVar>
 }
 
 impl AddVarMaps {
     pub fn new() -> AddVarMaps {
         AddVarMaps {
-            map_id_var: HashMap::new(), 
+            map_id_var: BTreeMap::new(), 
         }
     }
 }
@@ -27,11 +31,13 @@ pub struct AddState
     pub t: f64,
 
     pub var_maps: AddVarMaps,
-    pub real_values: HashMap<AddVar, f64>,
-    pub int_values: HashMap<AddVar, i32>,
-    pub bool_values: HashMap<AddVar, bool>,
-    pub string_values: HashMap<AddVar, String>,
+    pub real_values: BTreeMap<AddVar, f64>,
+    pub int_values: BTreeMap<AddVar, i32>,
+    pub bool_values: BTreeMap<AddVar, bool>,
+    pub string_values: BTreeMap<AddVar, String>,
 }
+
+unsafe impl Sync for AddState {}
 
 impl AddState {
     pub fn new() -> AddState {
@@ -39,10 +45,10 @@ impl AddState {
             t: 0.0, 
 
             var_maps: AddVarMaps::new(),
-            real_values: HashMap::new(),
-            int_values: HashMap::new(),
-            bool_values: HashMap::new(),
-            string_values: HashMap::new(),
+            real_values: BTreeMap::new(),
+            int_values: BTreeMap::new(),
+            bool_values: BTreeMap::new(),
+            string_values: BTreeMap::new(),
         };
 
         add_state.real_values.insert(AddVar::RI1, 0.0);
@@ -57,9 +63,9 @@ impl AddState {
         add_state.bool_values.insert(AddVar::BI2, false);
         add_state.bool_values.insert(AddVar::BO, false);
 
-        add_state.string_values.insert(AddVar::SI1, "".to_string());
-        add_state.string_values.insert(AddVar::SI2, "".to_string());
-        add_state.string_values.insert(AddVar::SO, "".to_string());
+        add_state.string_values.insert(AddVar::SI1, "".to_owned());
+        add_state.string_values.insert(AddVar::SI2, "".to_owned());
+        add_state.string_values.insert(AddVar::SO, "".to_owned());
 
         add_state
     }

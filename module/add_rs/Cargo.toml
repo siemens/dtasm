@@ -12,3 +12,7 @@ dtasm_rs = { version = "0.1.0", path = "../../lib/dtasm_rs" }
 
 [lib]
 crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 'z'  # Optimize for size.
+lto = true
