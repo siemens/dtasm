@@ -1,5 +1,5 @@
 [package]
-name = "dpend_rs"
+name = "add_rs"
 version = "0.1.0"
 authors = ["arrisde <maurice@nurfuerspam.de>"]
 edition = "2018"
@@ -12,3 +12,7 @@ dtasm_rs = { version = "0.1.0", path = "../../lib/dtasm_rs" }
 
 [lib]
 crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 'z'  # Optimize for size.
+lto = true

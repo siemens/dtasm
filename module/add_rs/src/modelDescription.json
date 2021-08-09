@@ -1,0 +1,155 @@
+{
+    "model": {
+        "name": "Add",
+        "id": "{8ad29d6a-2525-4576-95be-e1facde6860e}",
+        "description": "Adds two inputs to yield one output for each of the dtasm types",
+        "generation_tool": "",
+        "generation_datetime": "2021-07-08 00:14:00 PM",
+        "name_delimiter": ".",
+        "capabilities": {
+            "can_handle_variable_step_size": true,
+            "can_reset_step": true,
+            "can_interpolate_inputs": false
+        }
+    },
+    "variables": [
+        {
+            "id": 1,
+            "name": "real_in1",
+            "value_type": "DtasmReal",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "real_val": 1.5
+            }
+        },
+        {
+            "id": 2,
+            "name": "real_in2",
+            "value_type": "DtasmReal",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "real_val": 2.3
+            }
+        },
+        {
+            "id": 3,
+            "name": "real_out",
+            "value_type": "DtasmReal",
+            "description": "",
+            "causality": "output",
+            "unit": "",
+            "default": {
+                "real_val": 0.0
+            }
+        },
+        {
+            "id": 4,
+            "name": "int_in1",
+            "value_type": "DtasmInt",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "int_val": -7
+            }
+        },
+        {
+            "id": 5,
+            "name": "int_in2",
+            "value_type": "DtasmInt",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "int_val": 3
+            }
+        },
+        {
+            "id": 6,
+            "name": "int_out",
+            "value_type": "DtasmInt",
+            "description": "",
+            "causality": "output",
+            "unit": "",
+            "default": {
+                "real_val": 0
+            }
+        },
+        {
+            "id": 7,
+            "name": "bool_in1",
+            "value_type": "DtasmBool",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "bool_val": true
+            }
+        },
+        {
+            "id": 8,
+            "name": "bool_in2",
+            "value_type": "DtasmBool",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "bool_val": true
+            }
+        },
+        {
+            "id": 9,
+            "name": "bool_out",
+            "value_type": "DtasmBool",
+            "description": "",
+            "causality": "output",
+            "unit": "",
+            "default": {
+                "bool_val": true
+            }
+        },
+        {
+            "id": 10,
+            "name": "string_in1",
+            "value_type": "DtasmString",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "string_val": "hello"
+            }
+        },
+        {
+            "id": 11,
+            "name": "string_in2",
+            "value_type": "DtasmString",
+            "description": "",
+            "causality": "input",
+            "unit": "",
+            "default": {
+                "string_val": ", world!"
+            }
+        },
+        {
+            "id": 12,
+            "name": "string_out",
+            "value_type": "DtasmString",
+            "description": "",
+            "causality": "output",
+            "unit": "",
+            "default": {
+                "string_val": "hello, world!"
+            }
+        }
+    ],
+    "experiment": {
+        "timestep_default": 0.01,
+        "starttime_default": 0.0,
+        "endtime_default": 10.0,
+        "time_unit": "s"
+    }
+}

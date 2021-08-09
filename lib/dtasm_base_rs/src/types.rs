@@ -1,3 +1,6 @@
+// Copyright 2021 Siemens AG
+// SPDX-License-Identifier: MIT
+
 use crate::model_description as MD;
 use dtasm_abi::dtasm_generated::dtasm_types as DTT;
 
@@ -80,7 +83,7 @@ impl Into<DTT::Status> for Status {
 ///
 /// * `status` - Status after the last time step computation.
 /// * `current_time` - Current internal time of the instance.
-/// * `values` - Current values of the requested variables requested.
+/// * `values` - Current values of the requested variables.
 #[derive(Debug,Clone)]
 pub struct GetValuesResponse {
     pub status: Status, 

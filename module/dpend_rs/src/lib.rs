@@ -1,3 +1,6 @@
+// Copyright 2021 Siemens AG
+// SPDX-License-Identifier: MIT
+
 mod types;
 mod dpend;
 
@@ -6,12 +9,14 @@ use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
 use dtasm_rs::interface::DtasmIf;
-use dtasm_rs::model_description::ModelDescription;
+use dtasm_rs::model_description::{ModelDescription};
 use dtasm_rs::types::{DoStepResponse, DtasmVarValues, GetValuesResponse, Status};
 use dtasm_rs::errors::DtasmError;
 
 use types::{DpState,DpVar,create_var_maps,create_default_vals};
 
+// TODO: encapsulate this into custom macro, e.g.
+// dtasm_module!(DpendMod)
 #[no_mangle]
 pub static mut SIM_MODULE: Lazy<Box<dyn DtasmIf + Sync + Send>> = Lazy::new(|| Box::new(DpendMod));
 
@@ -82,7 +87,19 @@ impl DtasmIf for DpendMod {
     }
 
     fn set_values(&mut self, _input_vals: &dtasm_rs::types::DtasmVarValues) -> Result<dtasm_rs::types::Status, dtasm_rs::errors::DtasmError> {
-        todo!()
+        let mut state = DP_STATE.lock().unwrap();
+
+        for id in _input_vals.real_values.keys(){
+            let var = state.var_maps.map_id_var[id];
+            let val = _input_vals.real_values[id];
+            match var {
+                DpVar::A1 => { state.var_values.insert(DpVar::A1, val); },
+                DpVar::A2 => { state.var_values.insert(DpVar::A2, val); },
+                _ => ()
+            }
+        }
+
+        Ok(dtasm_rs::types::Status::OK)
     }
 
     fn do_step(&mut self, current_time: f64, timestep: f64) -> Result<dtasm_rs::types::DoStepResponse, dtasm_rs::errors::DtasmError> {
