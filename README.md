@@ -16,8 +16,9 @@ This repository contains various implementations of _dtasm_ runtimes and modules
 The main components of this repository are: 
 - [_dtasmtime_](runtime/dtasmtime) - A Rust library implementing a runtime for _dtasm_ modules based on [Wasmtime](http://wasmtime.dev). An example command-line program using this library for loading and executing _dtasm_ modules can be found in [`runtime/examples/dtasmtime_rs`](runtime/examples/dtasmtime_rs). 
 - [_dtasmtime-c-api_](runtime/dtasmtime-c-api) - C API for _dtasmtime_, allowing the library to be called from C/C++, as well as other languages with C interop capabilities. An example command-line program in C that uses this library can be found in [`runtime/examples/dtasmtime_c`](runtime/examples/dtasmtime_c). 
-- [_dpend-cpp_](module/dpend_cpp) - Exemplary _dtasm_ module implementing a double pendulum simulator (based on example code by [M. Wheatland](http://www.physics.usyd.edu.au/~wheat/dpend_html/). 
-- [_dpend-rs_](module/dpend_rs) - Same double pendulum simulator written in Rust. 
+- [_dpend_cpp_](module/dpend_cpp) - Exemplary _dtasm_ module implementing a double pendulum simulator (based on example code by [M. Wheatland](http://www.physics.usyd.edu.au/~wheat/dpend_html/). 
+- [_dpend_rs_](module/dpend_rs) - Same double pendulum simulator written in Rust. 
+- [_add_rs_](module/dpend_rs) - Simple test module adding (or concatenating, *and*ing) two inputs of each type. 
 
 ## Prerequisites
 - Linux or Windows OS on x86_64 or aarch64 platform
