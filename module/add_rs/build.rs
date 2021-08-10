@@ -21,6 +21,7 @@ fn main() {
     let mut fbs_path = PathBuf::from(crate_dir.clone());
     fbs_path.push("..");
     fbs_path.push("..");
+    fbs_path.push("lib");
     fbs_path.push("dtasm_abi");
     fbs_path.push("schema");
     fbs_path.push("dtasm.fbs");
