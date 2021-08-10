@@ -15,3 +15,7 @@ anyhow = "1.0.28"
 
 dtasm_abi = { version = "0.1.0", path = "../../dtasm_abi" }
 dtasm_base = { version = "0.1.0", path = "../../lib/dtasm_base_rs" }
+
+[dev-dependencies]
+float-cmp = "0.9.0"
+rstest = "0.11.0"
