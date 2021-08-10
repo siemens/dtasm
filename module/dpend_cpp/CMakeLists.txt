@@ -11,7 +11,7 @@ endif()
 set(INCLUDE_DIRS 
 	"include" 
 	"../dpend/target"
-	"../../dtasm_abi/include"
+	"../../lib/dtasm_abi/include"
 	"../../third_party/flatbuffers.git/include")
 set(CXX_FLAGS "-fPIC -std=c++11 -fno-exceptions")
 set(C_FLAGS "-std=gnu99 -Wall -Wextra -Wno-unused-parameter -fPIC")
