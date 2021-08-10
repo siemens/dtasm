@@ -54,7 +54,12 @@ run-rs: $(DPEND_RS) $(DTASMTIME_MAIN)
 run-c: $(DPEND_C) $(DTASMTIME_MAIN_C)
 	cp $(DTASMTIME_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cp $(DPEND_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
+	cp $(ADD_RS) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(DPEND_C)) 0.0 10.0 100
+	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(ADD_RS)) 0.0 1.0 1
+
+test: $(DTASMTIME)
+	cd runtime/dtasmtime; cargo test $(CARGO_BUILD_FLAGS)
 
 test: $(DTASMTIME)
 	cd runtime/dtasmtime; cargo test $(CARGO_BUILD_FLAGS)
