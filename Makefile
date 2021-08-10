@@ -32,6 +32,7 @@ endif
 FLATC = $(FB_DIR)/flatc$(EXE_EXT)
 
 DPEND_RS = module/dpend_rs/target/wasm32-wasi/$(CONFIG)/dpend_rs.wasm
+ADD_RS = module/add_rs/target/wasm32-wasi/$(CONFIG)/add_rs.wasm
 DPEND_C = module/dpend_cpp/target/dpend_cpp.wasm
 DTASMTIME = runtime/dtasmtime/target/$(CONFIG)/libdtasmtime.rlib
 DTASMTIME_C = runtime/dtasmtime-c-api/target/$(CONFIG)/$(LIB_PREFIX)dtasmtime_c_api$(LIB_EXT)
@@ -39,7 +40,7 @@ DTASMTIME_MAIN = runtime/examples/dtasmtime_rs/target/$(CONFIG)/dtasmtime_rs$(EX
 DTASMTIME_MAIN_C = runtime/examples/dtasmtime_c/target/$(CONFIGDIR)main$(EXE_EXT)
 DEP_FILES = dtasm_abi/src/dtasm_generated.rs module/dpend/target/modelDescription.fb dtasm_abi/include/dtasm_generated.h module/dpend/target/modelDescription.h
 
-default: $(DPEND_RS) $(DTASMTIME_MAIN)
+default: $(DPEND_RS) $(ADD_RS) $(DTASMTIME_MAIN)
 
 cpp: $(DPEND_C) $(DTASMTIME_MAIN_C)
 
@@ -54,6 +55,9 @@ run-c: $(DPEND_C) $(DTASMTIME_MAIN_C)
 	cp $(DTASMTIME_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cp $(DPEND_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(DPEND_C)) 0.0 10.0 100
+
+test: $(DTASMTIME)
+	cd runtime/dtasmtime; cargo test $(CARGO_BUILD_FLAGS)
 
 $(FLATC):
 	mkdir -p $(FB_DIR)/_build
@@ -77,6 +81,9 @@ $(DTASMTIME_MAIN_C): $(DTASMTIME_C)
 
 $(DPEND_RS): deps
 	cd module/dpend_rs && cargo build $(CARGO_BUILD_FLAGS)
+
+$(ADD_RS): deps
+	cd module/add_rs && cargo build $(CARGO_BUILD_FLAGS)
 
 $(DPEND_C): deps
 	mkdir -p module/dpend_cpp/build
@@ -102,6 +109,7 @@ clean:
 	rm -rf dtasm_abi/target
 	rm -rf module/dpend/target
 	rm -rf module/dpend_rs/target
+	rm -rf module/add_rs/target
 	rm -rf module/dpend_cpp/target
 	rm -rf module/dpend_cpp/build
 	rm -rf runtime/dtasmtime/target
