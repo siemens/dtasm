@@ -8,7 +8,7 @@
 # Digital Twin Assembly
 
 Digital Twin Assembly (_dtasm_) is a binary interface (ABI) for executable numerical simulators compiled into WebAssembly modules. Such simulators implement methods for dynamically stepping forward in discrete time steps, where in each step, the simulator takes values for its declared input variables, performs the time step calculation, and emits values for its declared output variables at the end of the time step. 
-_dtasm_ is based on WebAssembly, WASI and FlatBuffers. See [here](docs/README.md) for a specification of the ABI. An in-depth description of _dtasm_ with a discussion of advantages and drawbacks can be found [ToDo]. 
+_dtasm_ is based on WebAssembly, WASI and FlatBuffers. See [here](docs/README.md) for a specification of the ABI. An in-depth description of _dtasm_ with a discussion of advantages and drawbacks has been [presented](https://2021.international.conference.modelica.org/proceedings/papers/Modelica2021session6A_paper3.pdf) at the _Modelica 2021_ conference. 
 
 ## Contents
 This repository contains various implementations of _dtasm_ runtimes and modules for demonstration purposes. It is not meant as a finished product or reference implementation of the _dtasm_ interface, but rather as a starting point for compiling and running numerical simulators as WebAssembly modules.
