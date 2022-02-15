@@ -22,12 +22,12 @@ use dtasm_base::model_description as MD;
 use dtasm_base::types::{DtasmVarType,DtasmVarValues,LogLevel,Status,GetValuesResponse,DoStepResponse};
 use dtasm_base::errors::DtasmError;
 
-type In1Out1T = dyn Fn(i32,) -> Result<i32, WT::Trap>;
-type In1Out0T = dyn Fn(i32,) -> Result<(), WT::Trap>;
-type In2Out1T = dyn Fn(i32, i32) -> Result<i32, WT::Trap>;
-type In4Out1T = dyn Fn(i32, i32, i32, i32) -> Result<i32, WT::Trap>;
+type In1Out1T = WT::TypedFunc<i32,i32>;
+type In1Out0T = WT::TypedFunc<i32,()>;
+type In2Out1T = WT::TypedFunc<(i32,i32),i32>;
+type In4Out1T = WT::TypedFunc<(i32,i32,i32,i32),i32>;
 
-const WASM_PAGE_SIZE: u32 = 65536;
+const WASM_PAGE_SIZE: u64 = 65536;
 const FB_BUILDER_SIZE: usize = 32768;
 const BASE_MEM_SIZE: i32 = 2048;
 
@@ -44,21 +44,19 @@ static DTASM_EXPORTS: [&str; 8] = [
 
 /// Engine for executing modules
 pub struct Engine {
-    wt_store: WT::Store, 
-    wt_linker: WT::Linker,
+    wt_engine: WT::Engine, 
+    wt_linker: WT::Linker<WTW::WasiCtx>,
 }
 
 impl Engine {
     pub fn new() -> Result<Engine, Box<dyn Error>> {
-        let store = WT::Store::default();
-        let mut linker = WT::Linker::new(&store);
-
-        let wasi = WTW::Wasi::new(&store, WTW::WasiCtx::new(std::env::args())?);
-        wasi.add_to_linker(&mut linker)?;
+        let engine = WT::Engine::default();
+        let mut linker = WT::Linker::new(&engine);
+        WTW::add_to_linker(&mut linker, |s| s)?;
 
         Ok(Engine {
-            wt_store: store, 
-            wt_linker: linker, 
+            wt_engine: engine,
+            wt_linker: linker
         })
     }
 }
@@ -66,14 +64,13 @@ impl Engine {
 /// Represents a dtasm module in memory
 pub struct Module<'a> {
     wt_module: WT::Module,
-    dtasm_engine: &'a Engine 
+    dtasm_engine: &'a Engine
 }
 
 impl Module<'_> {
     /// Loads a module from bytestream; note that the module needs to be tied to an engine at this point
     pub fn new(file: PathBuf, engine: &Engine) -> Result<Module, DtasmtimeError> {
-        let store = &engine.wt_store;
-        let module = WT::Module::from_file(store.engine(), file)?;
+        let module = WT::Module::from_file(&engine.wt_engine, file)?;
 
         for name in DTASM_EXPORTS.iter() {
             if module.get_export(name).is_none() {
@@ -90,57 +87,61 @@ impl Module<'_> {
     }
 
     /// Create an instance of the module
-    pub fn instantiate(&self) -> Result<Instance, DtasmtimeError> {
-        let wt_instance = self.dtasm_engine.wt_linker.instantiate(&self.wt_module)?;
+    pub fn instantiate(&mut self) -> Result<Instance, DtasmtimeError> {
+        let wasi = WTW::WasiCtxBuilder::new()
+            .inherit_stdio()
+            .build();
+        let mut store = WT::Store::new(&self.dtasm_engine.wt_engine, wasi);
+        let wt_instance = self.dtasm_engine.wt_linker.instantiate(&mut store, &self.wt_module)?;
 
         let reactor_init = wt_instance
-            .get_func("_initialize");
-
+            .get_func(&mut store, "_initialize");
         let memory = wt_instance
-            .get_memory("memory")
+            .get_memory(&mut store, "memory")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("memory".to_string())))?;
         let alloc = wt_instance
-            .get_func("alloc")
+            .get_func(&mut store, "alloc")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("alloc".to_string())))?
-            .get1::<i32, i32>()?;
+            .typed::<i32,i32,_>(&mut store)?;
         let dealloc = wt_instance
-            .get_func("dealloc")
+            .get_func(&mut store, "dealloc")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("dealloc".to_string())))?
-            .get1::<i32, ()>()?;
+            .typed::<i32,(),_>(&store)?;
         let get_model_description = wt_instance
-            .get_func("getModelDescription")
+            .get_func(&mut store, "getModelDescription")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("getModelDescription".to_string())))?
-            .get2::<i32, i32, i32>()?;
+            .typed::<(i32,i32),i32,_>(&store)?;
         let init = wt_instance
-            .get_func("init")
+            .get_func(&mut store, "init")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("init".to_string())))?
-            .get4::<i32, i32, i32, i32, i32>()?;
+            .typed::<(i32,i32,i32,i32),i32,_>(&store)?;
         let get_values = wt_instance
-            .get_func("getValues")
+            .get_func(&mut store, "getValues")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("getValues".to_string())))?
-            .get4::<i32, i32, i32, i32, i32>()?;
+            .typed::<(i32,i32,i32,i32),i32,_>(&store)?;
         let set_values = wt_instance
-            .get_func("setValues")
+            .get_func(&mut store, "setValues")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("setValues".to_string())))?
-            .get4::<i32, i32, i32, i32, i32>()?;
+            .typed::<(i32,i32,i32,i32),i32,_>(&store)?;
         let do_step = wt_instance
-            .get_func("doStep")
+            .get_func(&mut store, "doStep")
             .ok_or(DTERR(DtasmError::MissingDtasmExport("doStep".to_string())))?
-            .get4::<i32, i32, i32, i32, i32>()?;
+            .typed::<(i32,i32,i32,i32),i32,_>(&store)?;
 
         Ok(Instance {
             memory, 
+            store: store,
             reactor_init_fn: reactor_init,
-            alloc_fn: Box::new(alloc), 
-            dealloc_fn: Box::new(dealloc), 
-            get_md_fn: Box::new(get_model_description), 
-            init_fn: Box::new(init),
-            get_values_fn: Box::new(get_values),
-            set_values_fn: Box::new(set_values),
-            do_step_fn: Box::new(do_step),
+            alloc_fn: alloc, 
+            dealloc_fn: dealloc, 
+            get_md_fn: get_model_description, 
+            init_fn: init,
+            get_values_fn: get_values,
+            set_values_fn: set_values,
+            do_step_fn: do_step,
             var_types: HashMap::new(),
             md: None, 
-            builder: FB::FlatBufferBuilder::new_with_capacity(FB_BUILDER_SIZE)
+            builder: FB::FlatBufferBuilder::with_capacity(FB_BUILDER_SIZE)
         })
     }
 }
@@ -148,14 +149,15 @@ impl Module<'_> {
 /// Represents an instance of a loaded dtasm module
 pub struct Instance {
     memory: WT::Memory, 
+    store: WT::Store<WTW::WasiCtx>,
     reactor_init_fn: Option<WT::Func>,
-    alloc_fn: Box<In1Out1T>, 
-    dealloc_fn: Box<In1Out0T>, 
-    get_md_fn: Box<In2Out1T>, 
-    init_fn: Box<In4Out1T>,
-    get_values_fn: Box<In4Out1T>,
-    do_step_fn: Box<In4Out1T>,
-    set_values_fn: Box<In4Out1T>,
+    alloc_fn: In1Out1T, 
+    dealloc_fn: In1Out0T, 
+    get_md_fn: In2Out1T, 
+    init_fn: In4Out1T,
+    get_values_fn: In4Out1T,
+    do_step_fn: In4Out1T,
+    set_values_fn: In4Out1T,
     var_types: HashMap<i32, DtasmVarType>,
     md: Option<MD::ModelDescription>, 
     builder: FB::FlatBufferBuilder<'static>
@@ -175,27 +177,25 @@ impl Instance {
         } 
 
         let mut size = BASE_MEM_SIZE;
-        let mut mem = (*self.alloc_fn)(size)?;
-        let mut size_out = (*self.get_md_fn)(mem, size)?;
+        let mut mem = self.alloc_fn.call(&mut self.store, size)?;
+        let mut size_out = self.get_md_fn.call(&mut self.store, (mem, size))?;
 
         while size_out > size {
-            (*self.dealloc_fn)(mem)?;
+            self.dealloc_fn.call(&mut self.store,mem)?;
             size *= 2;
-            mem = (*self.alloc_fn)(size)?;
+            mem = self.alloc_fn.call(&mut self.store, size)?;
 
-            size_out = (*self.get_md_fn)(mem, size)?;
+            size_out = self.get_md_fn.call(&mut self.store, (mem, size))?;
         }
 
-        let bytes = unsafe {
-            &self.memory.data_unchecked()[mem as usize..(mem+size_out) as usize] 
-        };
+        let bytes = &self.memory.data(&mut self.store)[mem as usize..(mem+size_out) as usize];
    
-        let model_desc_fb = DTMD::get_root_as_model_description(bytes);
+        let model_desc_fb = DTMD::root_as_model_description(bytes).unwrap();
         let md = convert_model_description(&model_desc_fb);
         self.md = Some(md.clone());
         self.var_types = Instance::collect_var_types(&md)?;
 
-        (*self.dealloc_fn)(mem)?;
+        self.dealloc_fn.call(&mut self.store, mem)?;
    
         Ok(md)
     }
@@ -218,15 +218,14 @@ impl Instance {
         match &self.reactor_init_fn {
             None => (),
             Some(f) => {
-                let init_fn = f.get0::<()>()?;
-                init_fn()?
+                f.call(&mut self.store, &[], &mut [])?;
             }
         }
         
         let fb_log = match log_level {
             LogLevel::Info => DTT::LogLevel::Info,
             LogLevel::Warn => DTT::LogLevel::Warn,
-            LogLevel::Error => DTT::LogLevel::Error
+            LogLevel::Error => DTT::LogLevel::Error,
         };
 
         let mut var_values = DtasmVarValues::new();
@@ -331,31 +330,27 @@ impl Instance {
 
         let init_req_buf = self.builder.finished_data(); 
         let init_req_len = init_req_buf.len();
-        let init_req_ptr = (*self.alloc_fn)(init_req_len as i32)? as usize;
+        let init_req_ptr = self.alloc_fn.call(&mut self.store, init_req_len as i32)? as usize;
 
         // copy buffer into allocated position in linear memory
-        unsafe {
-            self.memory.data_unchecked_mut()[init_req_ptr..init_req_ptr+init_req_len]
-                .copy_from_slice(init_req_buf);
-        };
+        self.memory.data_mut(&mut self.store)[init_req_ptr..init_req_ptr+init_req_len]
+            .copy_from_slice(init_req_buf);
 
         // return value is status only, should fit into 64 bytes
         let size = 64;
-        let init_res_ptr = (*self.alloc_fn)(size)? as usize;
-        let size_out = (self.init_fn)(init_req_ptr as i32, init_req_len as i32, init_res_ptr as i32, size)?;
+        let init_res_ptr = self.alloc_fn.call(&mut self.store, size)? as usize;
+        let size_out = self.init_fn.call(&mut self.store, (init_req_ptr as i32, init_req_len as i32, init_res_ptr as i32, size))?;
 
         if size_out > size { return Err(DTERR(DtasmError::DtasmInternalError(format!("Unexpected size returned from init request: {}", size_out)))); }
 
-        let res_bytes = unsafe {
-            &self.memory.data_unchecked()[init_res_ptr..init_res_ptr+(size_out as usize)] 
-        };
+        let res_bytes = &self.memory.data(&mut self.store)[init_res_ptr..init_res_ptr+(size_out as usize)];
 
-        let init_res = FB::get_root::<DTAPI::StatusRes>(res_bytes);
+        let init_res = FB::root::<DTAPI::StatusRes>(res_bytes).unwrap();
 
         let status_res = init_res.status().into();
         
-        (*self.dealloc_fn)(init_req_ptr as i32)?;
-        (*self.dealloc_fn)(init_res_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, init_req_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, init_res_ptr as i32)?;
         self.builder.reset();
 
         Ok(status_res)
@@ -387,36 +382,32 @@ impl Instance {
 
         let getval_req_buf = self.builder.finished_data();
         let getval_req_len = getval_req_buf.len();
-        let getval_req_ptr = (*self.alloc_fn)(getval_req_len as i32)? as usize;
+        let getval_req_ptr = self.alloc_fn.call(&mut self.store, getval_req_len as i32)? as usize;
 
-        unsafe {
-            self.memory.data_unchecked_mut()[getval_req_ptr..getval_req_ptr+getval_req_len]
-                .copy_from_slice(getval_req_buf);
-           };
+        self.memory.data_mut(&mut self.store)[getval_req_ptr..getval_req_ptr+getval_req_len]
+            .copy_from_slice(getval_req_buf);
     
         let mut size = BASE_MEM_SIZE;
-        let mut getval_res_ptr = (*self.alloc_fn)(size)? as usize;
-        let mut size_out = (*self.get_values_fn)(getval_req_ptr as i32, getval_req_len as i32, getval_res_ptr as i32, size)?;
+        let mut getval_res_ptr = self.alloc_fn.call(&mut self.store,  size)? as usize;
+        let mut size_out = self.get_values_fn.call(&mut self.store, (getval_req_ptr as i32, getval_req_len as i32, getval_res_ptr as i32, size))?;
         
         while size_out > size {
-            (*self.dealloc_fn)(getval_res_ptr as i32)?;
+            self.dealloc_fn.call(&mut self.store, getval_res_ptr as i32)?;
             size *= 2;
-            getval_res_ptr = (*self.alloc_fn)(size)? as usize;
+            getval_res_ptr = self.alloc_fn.call(&mut self.store, size)? as usize;
     
-            size_out = (*self.get_values_fn)(getval_req_ptr as i32, getval_req_len as i32, getval_res_ptr as i32, size)?;
+            size_out = self.get_values_fn.call(&mut self.store, (getval_req_ptr as i32, getval_req_len as i32, getval_res_ptr as i32, size))?;
         }
     
-        let res_bytes = unsafe {
-            &self.memory.data_unchecked()[getval_res_ptr..getval_res_ptr+size_out as usize]
-        };
+        let res_bytes = &self.memory.data(&mut self.store)[getval_res_ptr..getval_res_ptr+size_out as usize];
     
-        let getvalues_res = FB::get_root::<DTAPI::GetValuesRes>(res_bytes);
+        let getvalues_res = FB::root::<DTAPI::GetValuesRes>(res_bytes).unwrap();
         let var_values = Instance::extract_vals(&getvalues_res, &self.var_types)?;
         let current_time = getvalues_res.current_time();
         let status = getvalues_res.status().into();
 
-        (*self.dealloc_fn)(getval_req_ptr as i32)?;
-        (*self.dealloc_fn)(getval_res_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, getval_req_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, getval_res_ptr as i32)?;
         self.builder.reset();
 
         Ok(GetValuesResponse {status, current_time, values: var_values})
@@ -534,31 +525,27 @@ impl Instance {
 
         let set_req_buf = self.builder.finished_data(); 
         let set_req_len = set_req_buf.len();
-        let set_req_ptr = (*self.alloc_fn)(set_req_len as i32)? as usize;
+        let set_req_ptr = self.alloc_fn.call(&mut self.store, set_req_len as i32)? as usize;
 
         // copy buffer into allocated position in linear memory
-        unsafe {
-            self.memory.data_unchecked_mut()[set_req_ptr..set_req_ptr+set_req_len]
+        self.memory.data_mut(&mut self.store)[set_req_ptr..set_req_ptr+set_req_len]
                 .copy_from_slice(set_req_buf);
-        };
 
         // return value is status only, should fit into 64 bytes
         let size = 64;
-        let set_res_ptr = (*self.alloc_fn)(size)? as usize;
-        let size_out = (self.set_values_fn)(set_req_ptr as i32, set_req_len as i32, set_res_ptr as i32, size)?;
+        let set_res_ptr = self.alloc_fn.call(&mut self.store, size)? as usize;
+        let size_out = self.set_values_fn.call(&mut self.store, (set_req_ptr as i32, set_req_len as i32, set_res_ptr as i32, size))?;
 
         if size_out > size { return Err(DTERR(DtasmError::DtasmInternalError(format!("Unexpected size returned from setValues request: {}", size_out)))); }
 
-        let res_bytes = unsafe {
-            &self.memory.data_unchecked()[set_res_ptr..set_res_ptr+(size_out as usize)] 
-        };
+        let res_bytes = &self.memory.data(&mut self.store)[set_res_ptr..set_res_ptr+(size_out as usize)];
 
-        let init_res = FB::get_root::<DTAPI::StatusRes>(res_bytes);
+        let init_res = FB::root::<DTAPI::StatusRes>(res_bytes).unwrap();
 
         let status_res = init_res.status().into();
         
-        (*self.dealloc_fn)(set_req_ptr as i32)?;
-        (*self.dealloc_fn)(set_res_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, set_req_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, set_res_ptr as i32)?;
         self.builder.reset();
 
         Ok(status_res)
@@ -580,29 +567,25 @@ impl Instance {
 
         let dostep_req_buf = self.builder.finished_data();
         let dostep_req_len = dostep_req_buf.len();
-        let dostep_req_ptr = (*self.alloc_fn)(dostep_req_len as i32)? as usize;
+        let dostep_req_ptr = self.alloc_fn.call(&mut self.store, dostep_req_len as i32)? as usize;
 
-        unsafe {
-            self.memory.data_unchecked_mut()[dostep_req_ptr..dostep_req_ptr+dostep_req_len]
-                .copy_from_slice(dostep_req_buf);
-            };
+        self.memory.data_mut(&mut self.store)[dostep_req_ptr..dostep_req_ptr+dostep_req_len]
+            .copy_from_slice(dostep_req_buf);
     
         let size = BASE_MEM_SIZE;
-        let dostep_res_ptr = (*self.alloc_fn)(size)? as usize;
-        let size_out = (*self.do_step_fn)(dostep_req_ptr as i32, dostep_req_len as i32, dostep_res_ptr as i32, size)?;
+        let dostep_res_ptr = self.alloc_fn.call(&mut self.store, size)? as usize;
+        let size_out = self.do_step_fn.call(&mut self.store, (dostep_req_ptr as i32, dostep_req_len as i32, dostep_res_ptr as i32, size))?;
         
         if size_out > size { return Err(DTERR(DtasmError::DtasmInternalError(format!("Unexpected size returned from doStep request: {}", size_out)))); }
     
-        let res_bytes = unsafe {
-            &self.memory.data_unchecked()[dostep_res_ptr..dostep_res_ptr+size_out as usize]
-        };
+        let res_bytes = &self.memory.data(&mut self.store)[dostep_res_ptr..dostep_res_ptr+size_out as usize];
     
-        let dostep_res = FB::get_root::<DTAPI::DoStepRes>(res_bytes);
+        let dostep_res = FB::root::<DTAPI::DoStepRes>(res_bytes).unwrap();
         let updated_time = dostep_res.updated_time();
         let status_res = dostep_res.status().into();
      
-        (*self.dealloc_fn)(dostep_req_ptr as i32)?;
-        (*self.dealloc_fn)(dostep_res_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, dostep_req_ptr as i32)?;
+        self.dealloc_fn.call(&mut self.store, dostep_res_ptr as i32)?;
         self.builder.reset();
 
         Ok(DoStepResponse {status: status_res, updated_time})
@@ -690,36 +673,32 @@ impl Instance {
     }
 
     /// Load a serialized state from file into this instance
-    pub fn load_state(&self, filepath: PathBuf) -> Result<(), DtasmtimeError>{
+    pub fn load_state(&mut self, filepath: PathBuf) -> Result<(), DtasmtimeError>{
         let mut file = std::fs::File::open(filepath)?;
 
         let mut buffer = Vec::new();
         // read the whole file
         file.read_to_end(&mut buffer)?;
 
-        let state_size = buffer.len() as u32;
-        let mem_size = &self.memory.size();
+        let state_size = buffer.len() as u64;
+        let mem_size = &self.memory.size(&mut self.store);
 
-        if state_size > &self.memory.size() * WASM_PAGE_SIZE {
+        if state_size > &self.memory.size(&mut self.store) * WASM_PAGE_SIZE {
             let add_pages = state_size  / WASM_PAGE_SIZE - mem_size;
-            let old_size = &self.memory.grow(add_pages)?;
+            let old_size = &self.memory.grow(&mut self.store, add_pages)?;
             assert!(old_size == mem_size, "Memory sizing inconsistency detected");
         }
 
-        unsafe {
-            &self.memory.data_unchecked_mut().copy_from_slice(&buffer[..]);
-        };
+        let _ = &self.memory.data_mut(&mut self.store).copy_from_slice(&buffer[..]);
 
         Ok(())
     }
 
     /// Serialize the current state of the instance to a binary file
-    pub fn save_state(&self, filepath: PathBuf) -> Result<(),DtasmtimeError>{
+    pub fn save_state(&mut self, filepath: PathBuf) -> Result<(),DtasmtimeError>{
         let mut file = std::fs::File::create(filepath)?;
 
-        unsafe {
-            file.write_all(&self.memory.data_unchecked())?;
-        };
+        file.write_all(&self.memory.data(&mut self.store))?;
 
         Ok(())
     }

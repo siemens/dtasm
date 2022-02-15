@@ -74,7 +74,8 @@ pub fn convert_causality(caus: DTMD::CausalityType) -> MD::CausalityType {
         DTMD::CausalityType::input => MD::CausalityType::Input,
         DTMD::CausalityType::local => MD::CausalityType::Local,
         DTMD::CausalityType::parameter => MD::CausalityType::Parameter,
-        DTMD::CausalityType::output => MD::CausalityType::Output
+        DTMD::CausalityType::output => MD::CausalityType::Output,
+        _ => MD::CausalityType::Parameter,
     }
 }
 
@@ -83,7 +84,8 @@ pub fn convert_value_type(val_type: DTT::VariableType) -> MD::VariableType {
         DTT::VariableType::DtasmReal => MD::VariableType::DtasmReal,
         DTT::VariableType::DtasmInt => MD::VariableType::DtasmInt,
         DTT::VariableType::DtasmBool => MD::VariableType::DtasmBool, 
-        DTT::VariableType::DtasmString => MD::VariableType::DtasmString
+        DTT::VariableType::DtasmString => MD::VariableType::DtasmString,
+        _ => MD::VariableType::DtasmString,
     }
 }
 

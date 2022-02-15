@@ -25,7 +25,7 @@ extern "Rust" {
 
 static VARTYPES: Lazy<Mutex<HashMap<i32, DtasmVarType>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 static MDBYTES: Lazy<Mutex<&[u8]>> = Lazy::new(|| Mutex::new(&[]));
-static FBBUILDER: Lazy<Mutex<FB::FlatBufferBuilder>> = Lazy::new(|| Mutex::new(FB::FlatBufferBuilder::new_with_capacity(4096)));
+static FBBUILDER: Lazy<Mutex<FB::FlatBufferBuilder>> = Lazy::new(|| Mutex::new(FB::FlatBufferBuilder::with_capacity(4096)));
 
 #[no_mangle]
 extern "C" fn alloc(size: size_t) -> *mut c_void {
@@ -47,7 +47,7 @@ extern "C" fn getModelDescription(out_p: *mut u8, max_len: u32) -> u32 {
     if md_bytes.len() == 0 {
         *md_bytes = unsafe { SIM_MODULE.get_model_description().unwrap() };
 
-        let md_dtasm = DTMD::get_root_as_model_description(*md_bytes);
+        let md_dtasm = DTMD::root_as_model_description(*md_bytes).unwrap();
         let md = convert_model_description(&md_dtasm);
 
         let mut var_types = VARTYPES.lock().unwrap();
@@ -69,7 +69,7 @@ extern "C" fn getModelDescription(out_p: *mut u8, max_len: u32) -> u32 {
 extern "C" fn init(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_len: u32) -> u32
 {
     let in_bytes = unsafe { slice::from_raw_parts(in_p, in_len as usize) };
-    let init_req = FB::get_root::<DTAPI::InitReq>(in_bytes);
+    let init_req = FB::root::<DTAPI::InitReq>(in_bytes).unwrap();
 
     let mut init_vals_sim = DtasmVarValues::new();
 
@@ -96,7 +96,7 @@ extern "C" fn init(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_len: u3
     });
 
     let md_bytes = MDBYTES.lock().unwrap();
-    let md_dtasm = DTMD::get_root_as_model_description(*md_bytes);
+    let md_dtasm = DTMD::root_as_model_description(*md_bytes).unwrap();
     let md = convert_model_description(&md_dtasm);
     
     let init_res =
@@ -147,7 +147,7 @@ extern "C" fn init(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_len: u3
 extern "C" fn getValues(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_len: u32) -> u32
 {    
     let in_bytes = unsafe { slice::from_raw_parts(in_p, in_len as usize) };
-    let getvalues_req = FB::get_root::<DTAPI::GetValuesReq>(in_bytes);
+    let getvalues_req = FB::root::<DTAPI::GetValuesReq>(in_bytes).unwrap();
 
     let get_ids = getvalues_req.ids().expect("Get values request did not contain any variables.");
     let mut get_var_ids: Vec<i32> = vec!();
@@ -242,7 +242,7 @@ extern "C" fn getValues(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_le
 extern "C" fn setValues(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_len: u32) -> u32
 {
     let in_bytes = unsafe { slice::from_raw_parts(in_p, in_len as usize) };
-    let set_req = FB::get_root::<DTAPI::SetValuesReq>(in_bytes);
+    let set_req = FB::root::<DTAPI::SetValuesReq>(in_bytes).unwrap();
 
     let mut set_vals_sim = DtasmVarValues::new();
 
@@ -303,7 +303,7 @@ extern "C" fn setValues(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_le
 extern "C" fn doStep(in_p: *const u8, in_len: u32, out_p: *mut u8, out_max_len: u32) -> u32
 {
     let in_bytes = unsafe { slice::from_raw_parts(in_p, in_len as usize) };
-    let dostep_req = FB::get_root::<DTAPI::DoStepReq>(in_bytes);
+    let dostep_req = FB::root::<DTAPI::DoStepReq>(in_bytes).unwrap();
 
     let current_time = dostep_req.current_time();
     let step = dostep_req.timestep();

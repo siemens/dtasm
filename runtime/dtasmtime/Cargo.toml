@@ -7,15 +7,15 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmtime = "0.19"
-wasmtime-wasi = "0.19"
-flatbuffers = { version = "0.6.2", path = "../../third_party/flatbuffers.git/rust/flatbuffers" }
-thiserror = "1.0"
-anyhow = "1.0.28"
+wasmtime = "0.34.0"
+wasmtime-wasi = "0.34.0"
+flatbuffers = { version = "2.0.0", path = "../../third_party/flatbuffers.git/rust/flatbuffers" }
+thiserror = "1.0.30"
+anyhow = "1.0.53"
 
 dtasm_abi = { version = "0.1.0", path = "../../lib/dtasm_abi" }
 dtasm_base = { version = "0.1.0", path = "../../lib/dtasm_base_rs" }
 
 [dev-dependencies]
 float-cmp = "0.9.0"
-rstest = "0.11.0"
+rstest = "0.12.0"

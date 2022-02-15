@@ -47,7 +47,7 @@ fn main() -> Result<()> {
     let n_steps = ((tmax-tmin)/dt).round() as i32;
 
     let engine = Engine::new().expect("Could not instantiate dtasm engine");
-    let dtasm_module = Module::new(opt.input, &engine).expect("Could not instantiate dtasm module");
+    let mut dtasm_module = Module::new(opt.input, &engine).expect("Could not instantiate dtasm module");
     let mut inst = dtasm_module.instantiate()?;
 
     let md = inst.get_model_description()?;
@@ -162,15 +162,15 @@ fn parse_cmd_parameters(params: &Vec<String>, vars: &Vec<MD::ModelVariable>) -> 
                 MD::VariableType::DtasmReal => {
                     let val: f64 = val_str.parse().expect("Could not parse cmd line argument");
                     id_vals.real_values.insert(variable.id, val);
-                }
+                },
                 MD::VariableType::DtasmInt => {
                     let val: i32 = val_str.parse().expect("Could not parse cmd line argument");
                     id_vals.int_values.insert(variable.id, val);
-                }
+                },
                 MD::VariableType::DtasmBool => {
                     let val: bool = val_str.parse().expect("Could not parse cmd line argument");
                     id_vals.bool_values.insert(variable.id, val);
-                }
+                },
                 MD::VariableType::DtasmString => {
                     id_vals.string_values.insert(variable.id, val_str.to_string());
                 }
@@ -240,15 +240,15 @@ fn write_record(csv_wtr: &mut Option<csv::Writer<File>>,
             MD::VariableType::DtasmReal => {
                 let val = var_values.real_values[var_id];
                 line.push(format!("{:.8}", val));
-            }
+            },
             MD::VariableType::DtasmInt => {
                 let val = var_values.int_values[var_id];
                 line.push(val.to_string());
-            }
+            },
             MD::VariableType::DtasmBool => {
                 let val = var_values.bool_values[var_id];
                 line.push(val.to_string());
-            }
+            },
             MD::VariableType::DtasmString => {
                 let val = &var_values.string_values[var_id];
                 line.push(val.to_string());
