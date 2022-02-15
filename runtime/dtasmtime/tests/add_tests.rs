@@ -8,7 +8,7 @@ use rstest::{fixture, rstest};
 
 
 struct DtasmFixture {
-    inst: Instance, 
+    inst: Instance,
     map_name_id: HashMap<String, i32>,
     out_ids: Vec<i32>
 }
@@ -25,7 +25,7 @@ fn fix() -> DtasmFixture {
     }
 
     let engine = Engine::new().expect("Could not instantiate dtasm engine");
-    let dtasm_module = Module::new(add_path, &engine).expect("Could not instantiate dtasm module");
+    let mut dtasm_module = Module::new(add_path, &engine).expect("Could not instantiate dtasm module");
     let mut inst = dtasm_module.instantiate().expect("Instantiate failed!");
     let md = inst.get_model_description().expect("Get Model Description failed!");
 

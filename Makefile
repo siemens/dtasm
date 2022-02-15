@@ -38,7 +38,7 @@ DTASMTIME = runtime/dtasmtime/target/$(CONFIG)/libdtasmtime.rlib
 DTASMTIME_C = runtime/dtasmtime-c-api/target/$(CONFIG)/$(LIB_PREFIX)dtasmtime_c_api$(LIB_EXT)
 DTASMTIME_MAIN = runtime/examples/dtasmtime_rs/target/$(CONFIG)/dtasmtime_rs$(EXE_EXT)
 DTASMTIME_MAIN_C = runtime/examples/dtasmtime_c/target/$(CONFIGDIR)main$(EXE_EXT)
-DEP_FILES = lib/dtasm_abi/src/dtasm_generated.rs module/dpend/target/modelDescription.fb lib/dtasm_abi/include/dtasm_generated.h module/dpend/target/modelDescription.h
+DEP_FILES = lib/dtasm_abi/src/dtasm_generated/mod.rs module/dpend/target/modelDescription.fb lib/dtasm_abi/include/dtasm_generated.h module/dpend/target/modelDescription.h
 
 default: $(DPEND_RS) $(ADD_RS) $(DTASMTIME_MAIN)
 
@@ -57,9 +57,6 @@ run-c: $(DPEND_C) $(DTASMTIME_MAIN_C)
 	cp $(ADD_RS) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(DPEND_C)) 0.0 10.0 100
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(ADD_RS)) 0.0 1.0 1
-
-test: $(DTASMTIME)
-	cd runtime/dtasmtime; cargo test $(CARGO_BUILD_FLAGS)
 
 test: $(DTASMTIME)
 	cd runtime/dtasmtime; cargo test $(CARGO_BUILD_FLAGS)
@@ -95,8 +92,9 @@ $(DPEND_C): deps
 	cd module/dpend_cpp/build; cmake .. -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$(WASI_SDK)/share/cmake/wasi-sdk.cmake" -DWASI_SDK_PREFIX="$(WASI_SDK)" -DCMAKE_BUILD_TYPE=$(CONFIG)
 	cd module/dpend_cpp/build; cmake --build . --config  $(CONFIG) --verbose
 
-lib/dtasm_abi/src/dtasm_generated.rs: lib/dtasm_abi/schema/dtasm.fbs $(FLATC)
+lib/dtasm_abi/src/dtasm_generated/mod.rs: lib/dtasm_abi/schema/dtasm.fbs $(FLATC)
 	$(FLATC) --rust --gen-mutable -o $(dir $@) $<
+	mv $(dir $@)/dtasm_generated.rs $@
 
 lib/dtasm_abi/include/dtasm_generated.h: lib/dtasm_abi/schema/dtasm.fbs $(FLATC)
 	$(FLATC) -c -o $(dir $@) $<
@@ -109,7 +107,7 @@ module/dpend/target/modelDescription.h: module/dpend/target/modelDescription.fb
 	cd $(dir $@); xxd -i modelDescription.fb | sed 's/\([0-9a-f]\)$$/\0, 0x00/' > modelDescription.h
 
 clean: 
-	rm -f lib/dtasm_abi/src/dtasm_generated.rs
+	rm -rf lib/dtasm_abi/src/dtasm_generated
 	rm -f lib/dtasm_abi/include/dtasm_generated.h
 	rm -rf lib/dtasm_abi/target
 	rm -rf module/dpend/target
