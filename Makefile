@@ -51,7 +51,7 @@ deps: $(FLATC) $(DEP_FILES)
 run-rs: $(DPEND_RS) $(DTASMTIME_MAIN)
 	cd runtime/examples/dtasmtime_rs; cargo run -- --input ../../../$(DPEND_RS)
 
-run-c: $(DPEND_C) $(DTASMTIME_MAIN_C)
+run-c: $(DPEND_C) $(DTASMTIME_MAIN_C) $(ADD_RS) 
 	cp $(DTASMTIME_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cp $(DPEND_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cp $(ADD_RS) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
