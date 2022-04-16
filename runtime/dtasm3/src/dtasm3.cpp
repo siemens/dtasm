@@ -11,6 +11,7 @@
 #include <sstream>
 #include <vector>
 
+#define WASM_PAGE_SIZE 65536
 
 namespace FB = flatbuffers;
 namespace DTMD = DtasmModelDescription;
@@ -463,6 +464,51 @@ public:
         m_builder.Reset();
         return do_step_res;
     }
+
+
+    void save_state(std::vector<uint8_t> &state_buffer) {
+        
+        // Need to free memory since otherwise it cannot be recovered 
+        // after loading the generated state snapshot
+        m_deallocFn->call(m_inputMem);
+        m_deallocFn->call(m_outputMem);
+
+        uint32_t memSize;
+        auto memPtr = m_m3Runtime.get_memory(memSize, 0);
+        state_buffer.resize(memSize);
+        for (uint32_t i=0; i<memSize; ++i) {
+            state_buffer[i] = *(memPtr++);
+        }
+
+        m_outputMem = m_allocFn->call<int32_t>(m_buffersize);
+        m_inputMem = m_allocFn->call<int32_t>(m_buffersize);
+    }
+
+
+    void load_state(const std::vector<uint8_t> &state_buffer) {
+       
+        uint32_t memSize;
+        auto memPtr = m_m3Runtime.get_memory(memSize, 0);
+
+        if (memSize < state_buffer.size()) {
+            if (state_buffer.size() % WASM_PAGE_SIZE != 0) {
+                std::stringstream errMsg;
+                errMsg << "Invalid state buffer size: " << state_buffer.size();
+                throw std::runtime_error(errMsg.str().c_str());
+            }
+
+            auto n_pages = state_buffer.size() / WASM_PAGE_SIZE;
+            m_m3Runtime.resize_memory(n_pages);
+        }
+
+        memPtr = m_m3Runtime.get_memory(memSize, 0);
+        for (uint32_t i=0; i<memSize; ++i) {
+            *(memPtr++) = state_buffer[i];
+        }
+
+        m_outputMem = m_allocFn->call<int32_t>(m_buffersize);
+        m_inputMem = m_allocFn->call<int32_t>(m_buffersize);
+    }
 };
 
 
@@ -508,6 +554,14 @@ dtasm3::DtasmStatus dtasm3::Runtime::set_values(const DtasmVarValues &set_vals) 
 
 dtasm3::DtasmDoStepResponse dtasm3::Runtime::do_step(double t, double dt) {
     return _rt->do_step(t, dt);
+}
+
+void dtasm3::Runtime::save_state(std::vector<uint8_t> &state_buffer) {
+    return _rt->save_state(state_buffer);
+}
+
+void dtasm3::Runtime::load_state(const std::vector<uint8_t> &state_buffer) {
+    return _rt->load_state(state_buffer);
 }
 
 

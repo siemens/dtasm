@@ -142,10 +142,10 @@ namespace dtasm3
 
         DtasmStatus get_values(const std::vector<int32_t> &var_ids, 
             DtasmGetValuesResponse &res);
-
         DtasmStatus set_values(const DtasmVarValues &set_vals);
-
         DtasmDoStepResponse do_step(double t, double dt);
+        void save_state(std::vector<uint8_t> &state_buffer);
+        void load_state(const std::vector<uint8_t> &state_buffer);
     };
 
 

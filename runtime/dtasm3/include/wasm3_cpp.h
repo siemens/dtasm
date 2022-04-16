@@ -11,6 +11,7 @@
 #include <cassert>
 
 #include "wasm3.h"
+#include "m3_env.h"
 
 #if defined(d_m3HasWASI) || defined(d_m3HasMetaWASI) || defined(d_m3HasUVWASI)
 #include "m3_api_wasi.h"
@@ -232,6 +233,8 @@ namespace wasm3 {
          */
         uint8_t* get_memory(uint32_t &memory_size_in_bytes, uint32_t memory_index);
 
+        void resize_memory(uint32_t num_pages);
+
     protected:
         friend class environment;
 
@@ -435,6 +438,10 @@ namespace wasm3 {
 
     inline uint8_t* runtime::get_memory(uint32_t &memory_size_in_bytes, uint32_t memory_index) {
         return m3_GetMemory(m_runtime.get(), &memory_size_in_bytes, memory_index);
+    }
+
+    inline void runtime::resize_memory(uint32_t num_pages) {
+        ResizeMemory(m_runtime.get(), num_pages);
     }
 
     template<typename Func>

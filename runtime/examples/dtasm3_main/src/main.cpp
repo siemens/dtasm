@@ -5,9 +5,36 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <algorithm>
 
 
 using namespace dtasm3;
+
+// Parsing of cmdline options, see https://stackoverflow.com/a/868894
+class InputParser{
+    public:
+        InputParser (int &argc, char **argv){
+            for (int i=1; i < argc; ++i)
+                this->tokens.push_back(std::string(argv[i]));
+        }
+        /// @author iain
+        const std::string& getCmdOption(const std::string &option) const{
+            std::vector<std::string>::const_iterator itr;
+            itr = std::find(this->tokens.begin(), this->tokens.end(), option);
+            if (itr != this->tokens.end() && ++itr != this->tokens.end()){
+                return *itr;
+            }
+            static const std::string empty_string("");
+            return empty_string;
+        }
+        /// @author iain
+        bool cmdOptionExists(const std::string &option) const{
+            return std::find(this->tokens.begin(), this->tokens.end(), option)
+                   != this->tokens.end();
+        }
+    private:
+        std::vector <std::string> tokens;
+};
 
 
 void print_status(const DtasmStatus status, const std::string call) {
@@ -77,31 +104,77 @@ void check_status_ok(const DtasmStatus status, const std::string call) {
 }
 
 
+// Read binary file to byte vector, see https://stackoverflow.com/a/21802936
+std::vector<uint8_t> read_file(const char* filename)
+{
+    std::ifstream file(filename, std::ios::binary);
+    file.unsetf(std::ios::skipws);
+    std::streampos fileSize;
+
+    file.seekg(0, std::ios::end);
+    fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<uint8_t> vec;
+    vec.reserve(fileSize);
+
+    vec.insert(vec.begin(),
+               std::istream_iterator<uint8_t>(file),
+               std::istream_iterator<uint8_t>());
+
+    return vec;
+}
+
+
+void write_file(const std::vector<uint8_t> &buffer, const char* filename) {
+    std::ofstream fout(filename, std::ios::out | std::ios::binary);
+    fout.write((char*)&buffer[0], buffer.size() * sizeof(uint8_t));
+    fout.close();
+}
+
+
 int main(int argc, char *argv[]) {
+    InputParser input(argc, argv);
+
     double tmin = 0.0;
     double tmax = 10.0;
     int n_steps = 100;
+
+    std::string in_state_file = "";
+    std::string out_state_file = "";
     
     if (argc <= 1) {
-        printf("Usage: dtasm3 dtasm_module.wasm [tmin=0.0] [tmax=10.0] [n_steps=1000] \n");
+        std::cout << "Usage: dtasm3 dtasm_module.wasm [--tmin=0.0] [--tmax=10.0] [--n_steps=1000] [--state-in=state_in.bin] [--state-out=state_out.bin]" 
+            << std::endl;
         exit(0);
     }
 
     std::string wasm_path = argv[1];
 
-    if (argc > 2) {
-        tmin = atof(argv[2]);
+    const std::string &tmin_in = input.getCmdOption("--tmin");
+    if (!tmin_in.empty()){
+        tmin = atof(tmin_in.c_str());
     }
 
-    if (argc > 3) {
-        tmax = atof(argv[3]);
+    const std::string &tmax_in = input.getCmdOption("--tmax");
+    if (!tmax_in.empty()){
+        tmax = atof(tmax_in.c_str());
     }
 
-    if (argc > 4) {
-        n_steps = atoi(argv[4]);
+    const std::string &n_steps_in = input.getCmdOption("--n_steps");
+    if (!n_steps_in.empty()){
+        n_steps = atoi(n_steps_in.c_str());
     }
 
-    double dt = (tmax-tmin)/n_steps;
+    const std::string &state_in = input.getCmdOption("--state-in");
+    if (!state_in.empty()){
+        in_state_file = state_in;
+    }
+
+    const std::string &state_out = input.getCmdOption("--state-out");
+    if (!state_out.empty()){
+        out_state_file = state_out;
+    }
 
     std::ifstream wasm_file(wasm_path, std::ios::binary | std::ifstream::in);
     if(!wasm_file.is_open()){
@@ -118,6 +191,7 @@ int main(int argc, char *argv[]) {
     Environment env((size_t)(64 * 1024));
     Module mod = env.load_module(wasm_buf);
     Runtime rt = env.create_runtime(mod);
+
     auto model_desc = rt.get_model_description();
 
     DtasmModelInfo mi = model_desc.model;
@@ -150,8 +224,16 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    auto init_status = rt.initialize(initial_vals, tmin, true, tmax, false, 0, DtasmLogInfo, false);
-    print_status(init_status, "Init");
+
+    if (in_state_file != "") { 
+        std::cout << "Loading state from file " << in_state_file << std::endl;
+        auto state_vec = read_file(in_state_file.c_str());
+        rt.load_state(state_vec);
+    }
+    else {
+        auto init_status = rt.initialize(initial_vals, tmin, true, tmax, false, 0, DtasmLogInfo, false);
+        print_status(init_status, "Init");
+    }
 
     std::vector<int32_t> out_var_ids;
     std::vector<std::string> out_var_names;
@@ -191,9 +273,11 @@ int main(int argc, char *argv[]) {
     print_var_names(out_var_names);
     print_var_values(res.current_time, out_var_ids, out_var_types, res.values);
 
-    double t = tmin;
+    double t = res.current_time;
     DtasmDoStepResponse do_step_res;
     DtasmStatus set_values_status;
+
+    double dt = (tmax-t)/n_steps;
 
     for (int i=0; i<n_steps; ++i) {
         do_step_res = rt.do_step(t, dt);
@@ -204,5 +288,12 @@ int main(int argc, char *argv[]) {
         set_values_status = rt.set_values(set_vals_default);
         check_status_ok(set_values_status, "SetValues");
         t = res.current_time;
+    }
+
+    if (out_state_file != "") {
+        std::cout << "Writing state to file " << out_state_file << std::endl;
+        std::vector<uint8_t> state_buffer;
+        rt.save_state(state_buffer);
+        write_file(state_buffer, out_state_file.c_str());
     }
 }
