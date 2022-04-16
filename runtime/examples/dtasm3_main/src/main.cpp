@@ -1,10 +1,10 @@
 #include "dtasm3.h"
 
 #include <fstream>
-#include <vector>
+#include <iterator>
 #include <sstream>
-
-#include "wasm3_mem.h"
+#include <iostream>
+#include <vector>
 
 
 using namespace dtasm3;

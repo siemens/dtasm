@@ -221,6 +221,17 @@ namespace wasm3 {
          */
         function find_function(const char *name);
 
+        /**
+         * Get pointer to a wasm module's linear memory
+         * 
+         * Currently only a single linear memory per module is supported, 
+         * so memory_index needs to be 0
+         * @param memory_size_in_bytes size of the memory area (this is a function output)
+         * @param memory_index index of memory, has to be 0
+         * @return pointer to loaded module's linear memory
+         */
+        uint8_t* get_memory(uint32_t &memory_size_in_bytes, uint32_t memory_index);
+
     protected:
         friend class environment;
 
@@ -420,6 +431,10 @@ namespace wasm3 {
 
     inline function runtime::find_function(const char *name) {
         return function(m_runtime, name);
+    }
+
+    inline uint8_t* runtime::get_memory(uint32_t &memory_size_in_bytes, uint32_t memory_index) {
+        return m3_GetMemory(m_runtime.get(), &memory_size_in_bytes, memory_index);
     }
 
     template<typename Func>

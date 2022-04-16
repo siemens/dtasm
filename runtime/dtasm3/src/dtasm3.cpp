@@ -1,7 +1,6 @@
 #include "wasm3.h"
 #include "m3_env.h"
 #include "wasm3_cpp.h"
-#include "wasm3_mem.h"
 
 #include "flatbuffers/flatbuffers.h"
 
@@ -22,7 +21,7 @@ namespace DTAPI = DtasmApi;
 class dtasm3::Runtime::Impl {
 private: 
     FB::FlatBufferBuilder m_builder;
-    wasm3::runtime_mem m_m3Runtime;
+    wasm3::runtime m_m3Runtime;
     int m_buffersize;
     int32_t m_outputMem;
     int32_t m_inputMem;
@@ -49,18 +48,14 @@ private:
             throw std::runtime_error(errMsg.str().c_str());
         }
 
-        IM3Runtime m3_rt = m_m3Runtime.get_m3runtime();
-        M3Memory *memory = &m3_rt->memory;
-        u8 *dest = NULL;
-        if (memory->mallocated) {
-            dest = m3MemData(memory->mallocated) + m_outputMem;
-        }
-        else {
-            std::string errorMsg = "Unallocated linear memory";
+        uint32_t memSize;
+        auto memPtr = m_m3Runtime.get_memory(memSize, 0);
+        if (m_outputMem + m_buffersize > memSize){
+            std::string errorMsg = "Response data overflowing linear memory";
             throw std::runtime_error(errorMsg.c_str());
         }
 
-        auto verifier = FB::Verifier(dest, return_len);
+        auto verifier = FB::Verifier(memPtr + m_outputMem, return_len);
         bool ok = DTMD::VerifyModelDescriptionBuffer(verifier);
         if (ok) {
             std::cout << "Model description verifies ok" << std::endl;
@@ -70,7 +65,7 @@ private:
             throw std::runtime_error(errorMsg.c_str());
         }
 
-        auto dtMd = FB::GetRoot<DTMD::ModelDescription>(dest);
+        auto dtMd = FB::GetRoot<DTMD::ModelDescription>(memPtr + m_outputMem);
         return mdFbToDtasm(dtMd);
     };
 
@@ -222,17 +217,13 @@ private:
         uint8_t* inputBuffer, 
         int32_t inputSize) { 
 
-        IM3Runtime m3_runtime = m_m3Runtime.get_m3runtime();
-        M3Memory *memory = &m3_runtime->memory;
-
-        uint8_t *reqPtr = m3MemData(memory->mallocated) + m_inputMem;
-        if (m_inputMem + inputSize <= memory->mallocated->length) {
-            memcpy(reqPtr, inputBuffer, inputSize);
-        }
-        else {
-            std::string errorMsg = "Data overflowing linear memory";
+        uint32_t memSize;
+        auto memPtr = m_m3Runtime.get_memory(memSize, 0);
+        if (m_inputMem + inputSize > memSize){
+            std::string errorMsg = "Request data overflowing linear memory";
             throw std::runtime_error(errorMsg.c_str());
         }
+        memcpy(memPtr + m_inputMem, inputBuffer, inputSize);
 
         auto resLen = func->call<int32_t>(m_inputMem, inputSize, m_outputMem, m_buffersize);
         if (resLen > m_buffersize) {
@@ -241,7 +232,7 @@ private:
             throw std::runtime_error(errMsg.str().c_str());
         }
 
-        return m3MemData(memory->mallocated) + m_outputMem;
+        return memPtr + m_outputMem;
     }
 
 
@@ -289,15 +280,15 @@ public:
         m_modelDesc(other.m_modelDesc) {
                     
         m_outputMem = other.m_outputMem;
-        other.m_outputMem = -1;
+        other.m_outputMem = 0;
         m_inputMem = other.m_inputMem;
-        other.m_inputMem = -1;
+        other.m_inputMem = 0;
     }
 
 
-    Impl(std::shared_ptr<wasm3::module> m3_mod, wasm3::environment_mem m3_env, 
+    Impl(std::shared_ptr<wasm3::module> m3_mod, wasm3::environment m3_env, 
         size_t stack_size_bytes, int32_t buffersize): 
-        m_m3Runtime(m3_env.new_runtime_mem(stack_size_bytes)),
+        m_m3Runtime(m3_env.new_runtime(stack_size_bytes)),
         m_buffersize(buffersize),
         m_builder(buffersize) {
 
@@ -320,7 +311,7 @@ public:
     ~Impl() {
         if (m_inputMem > 0)
             m_deallocFn->call(m_inputMem);
-        if (m_inputMem > 0)
+        if (m_outputMem > 0)
             m_deallocFn->call(m_outputMem);
     }
 
@@ -542,7 +533,7 @@ dtasm3::Module::~Module() = default;
 class dtasm3::Environment::Impl {
 private:
     size_t stack_size;
-    wasm3::environment_mem m3_env;
+    wasm3::environment m3_env;
 
 public:
     Impl(size_t stack_size_bytes) {
