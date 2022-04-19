@@ -61,7 +61,7 @@ run-c: $(DPEND_C) $(DTASMTIME_MAIN_C) $(ADD_RS)
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(DPEND_C)) 0.0 10.0 100
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(ADD_RS)) 0.0 1.0 1
 
-run-wasm3: $(DPEND_C) $(DPEND_RS) $(ADD_RS) $(DTASM3_MAIN)
+run-dtasm3: $(DPEND_C) $(DPEND_RS) $(ADD_RS) $(DTASM3_MAIN)
 	cd runtime/examples/dtasm3_main/build; ./dtasm3$(EXE_EXT) ../../../../$(DPEND_C)
 	cd runtime/examples/dtasm3_main/build; ./dtasm3$(EXE_EXT) ../../../../$(DPEND_RS)
 	cd runtime/examples/dtasm3_main/build; ./dtasm3$(EXE_EXT) ../../../../$(ADD_RS)
