@@ -36,9 +36,12 @@ ADD_RS = module/add_rs/target/wasm32-wasi/$(CONFIG)/add_rs.wasm
 DPEND_C = module/dpend_cpp/target/dpend_cpp.wasm
 DTASMTIME = runtime/dtasmtime/target/$(CONFIG)/libdtasmtime.rlib
 DTASMTIME_C = runtime/dtasmtime-c-api/target/$(CONFIG)/$(LIB_PREFIX)dtasmtime_c_api$(LIB_EXT)
+DTASM3 = runtime/dtasm3/build/libdtasm3.a
 DTASMTIME_MAIN = runtime/examples/dtasmtime_rs/target/$(CONFIG)/dtasmtime_rs$(EXE_EXT)
-DTASMTIME_MAIN_C = runtime/examples/dtasmtime_c/target/$(CONFIGDIR)main$(EXE_EXT)
-DEP_FILES = lib/dtasm_abi/src/dtasm_generated/mod.rs module/dpend/target/modelDescription.fb lib/dtasm_abi/include/dtasm_generated.h module/dpend/target/modelDescription.h
+DTASMTIME_MAIN_C = runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)main$(EXE_EXT)
+DTASM3_MAIN = runtime/examples/dtasm3_main/build/dtasm3$(EXE_EXT)
+DEP_FILES = lib/dtasm_abi/src/dtasm_generated/mod.rs module/dpend/target/modelDescription.fb \
+	lib/dtasm_abi/include/dtasm_generated.h module/dpend/target/modelDescription.h
 
 default: $(DPEND_RS) $(ADD_RS) $(DTASMTIME_MAIN)
 
@@ -51,12 +54,17 @@ deps: $(FLATC) $(DEP_FILES)
 run-rs: $(DPEND_RS) $(DTASMTIME_MAIN)
 	cd runtime/examples/dtasmtime_rs; cargo run -- --input ../../../$(DPEND_RS)
 
-run-c: $(DPEND_C) $(DTASMTIME_MAIN_C)
+run-c: $(DPEND_C) $(DTASMTIME_MAIN_C) $(ADD_RS) 
 	cp $(DTASMTIME_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cp $(DPEND_C) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cp $(ADD_RS) runtime/examples/dtasmtime_c/target/$(CONFIG_DIR)
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(DPEND_C)) 0.0 10.0 100
 	cd runtime/examples/dtasmtime_c/target/$(CONFIG_DIR); ./main$(EXE_EXT) $(notdir $(ADD_RS)) 0.0 1.0 1
+
+run-dtasm3: $(DPEND_C) $(DPEND_RS) $(ADD_RS) $(DTASM3_MAIN)
+	cd runtime/examples/dtasm3_main/build; ./dtasm3$(EXE_EXT) ../../../../$(DPEND_C)
+	cd runtime/examples/dtasm3_main/build; ./dtasm3$(EXE_EXT) ../../../../$(DPEND_RS)
+	cd runtime/examples/dtasm3_main/build; ./dtasm3$(EXE_EXT) ../../../../$(ADD_RS)
 
 test: $(DTASMTIME)
 	cd runtime/dtasmtime; cargo test $(CARGO_BUILD_FLAGS)
@@ -81,6 +89,16 @@ $(DTASMTIME_MAIN_C): $(DTASMTIME_C)
 	cd runtime/examples/dtasmtime_c/build; cmake .. $(CMAKE_X64)
 	cd runtime/examples/dtasmtime_c/build; cmake --build . --config  $(CONFIG) --verbose
 
+$(DTASM3): deps
+	mkdir -p runtime/dtasm3/build
+	cd runtime/dtasm3/build; cmake .. -DCMAKE_BUILD_TYPE=$(CONFIG)
+	cd runtime/dtasm3/build; cmake --build . --config $(CONFIG) --verbose
+
+$(DTASM3_MAIN): deps
+	mkdir -p runtime/examples/dtasm3_main/build
+	cd runtime/examples/dtasm3_main/build; cmake .. -DCMAKE_BUILD_TYPE=$(CONFIG)
+	cd runtime/examples/dtasm3_main/build; cmake --build . --config $(CONFIG) --verbose
+
 $(DPEND_RS): deps
 	cd module/dpend_rs && cargo build $(CARGO_BUILD_FLAGS)
 
@@ -90,7 +108,7 @@ $(ADD_RS): deps
 $(DPEND_C): deps
 	mkdir -p module/dpend_cpp/build
 	cd module/dpend_cpp/build; cmake .. -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$(WASI_SDK)/share/cmake/wasi-sdk.cmake" -DWASI_SDK_PREFIX="$(WASI_SDK)" -DCMAKE_BUILD_TYPE=$(CONFIG)
-	cd module/dpend_cpp/build; cmake --build . --config  $(CONFIG) --verbose
+	cd module/dpend_cpp/build; cmake --build . --config $(CONFIG) --verbose
 
 lib/dtasm_abi/src/dtasm_generated/mod.rs: lib/dtasm_abi/schema/dtasm.fbs $(FLATC)
 	$(FLATC) --rust --gen-mutable -o $(dir $@) $<
@@ -120,6 +138,8 @@ clean:
 	rm -rf runtime/examples/dtasmtime_rs/target
 	rm -rf runtime/examples/dtasmtime_c/target
 	rm -rf runtime/examples/dtasmtime_c/build
+	rm -rf runtime/dtasm3/build
+	rm -rf runtime/examples/dtasm3_main/build
 
 distclean: clean
 	rm -rf $(FB_DIR)/_build

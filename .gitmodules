@@ -1,3 +1,6 @@
 [submodule "third_party/flatbuffers.git"]
 	path = third_party/flatbuffers.git
 	url = https://github.com/google/flatbuffers.git
+[submodule "third_party/wasm3.git"]
+	path = third_party/wasm3.git
+	url = https://github.com/wasm3/wasm3.git
