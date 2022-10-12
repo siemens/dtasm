@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <exception>
 
 #define WASM_PAGE_SIZE 65536
 
@@ -21,11 +22,11 @@ namespace DTAPI = DtasmApi;
 
 class dtasm3::Runtime::Impl {
 private: 
-    FB::FlatBufferBuilder m_builder;
     wasm3::runtime m_m3Runtime;
-    int m_buffersize;
-    int32_t m_outputMem;
-    int32_t m_inputMem;
+    FB::FlatBufferBuilder m_builder;
+    size_t m_buffersize;
+    size_t m_outputMem;
+    size_t m_inputMem;
 
     std::unique_ptr<wasm3::function> m_allocFn;
     std::unique_ptr<wasm3::function> m_deallocFn;
@@ -516,6 +517,10 @@ dtasm3::Runtime::Runtime(Impl &impl):
     _rt(std::make_unique<dtasm3::Runtime::Impl>(std::move(impl)))
 {}
 
+// dtasm3::Runtime::Runtime(const Runtime &rt): 
+//     _rt(std::make_unique<dtasm3::Runtime::Impl>(std::move(*rt._rt)))
+// {}
+
 dtasm3::Runtime::~Runtime() = default;
 
 dtasm3::DtasmModelDescription dtasm3::Runtime::get_model_description() {
@@ -580,6 +585,10 @@ dtasm3::Module::Module(Impl &impl):
     _mod{std::make_unique<dtasm3::Module::Impl>(impl)}
 {}
 
+dtasm3::Module::Module(const Module &mod):
+    _mod{std::make_unique<dtasm3::Module::Impl>(*mod._mod)}
+{}
+
 dtasm3::Module::~Module() = default;
 
 
@@ -628,8 +637,8 @@ dtasm3::Module dtasm3::Environment::load_module(std::shared_ptr<std::vector<uint
     return _env->load_module(data);
 }
 
-dtasm3::Runtime dtasm3::Environment::create_runtime(Module &module){
-    return _env->create_runtime(module);
+dtasm3::Runtime dtasm3::Environment::create_runtime(Module &module, int buffersize){
+    return _env->create_runtime(module, buffersize);
 }
 
 dtasm3::Environment::~Environment() = default;
