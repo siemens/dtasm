@@ -128,6 +128,7 @@ namespace dtasm3
     
     public: 
         ~Runtime();
+        Runtime(const Runtime &rt);
         DtasmModelDescription get_model_description();
         
         DtasmStatus initialize(
@@ -159,6 +160,7 @@ namespace dtasm3
         Module(Impl &impl);
 
     public: 
+        Module(const Module &mod);
         ~Module();
     };
 
@@ -173,6 +175,6 @@ namespace dtasm3
         ~Environment();
         Module load_module(const uint8_t* data, const size_t len);
         Module load_module(std::shared_ptr<std::vector<uint8_t>> data);
-        Runtime create_runtime(Module &mod);
+        Runtime create_runtime(Module &mod, int buffersize = 8192);
     };
 }

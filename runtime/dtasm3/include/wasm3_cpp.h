@@ -14,7 +14,11 @@
 #include "m3_env.h"
 
 #if defined(d_m3HasWASI) || defined(d_m3HasMetaWASI) || defined(d_m3HasUVWASI)
+#if defined(ESP32)
+#include "m3_api_esp_wasi.h"
+#else
 #include "m3_api_wasi.h"
+#endif
 #define LINK_WASI
 #endif
 
@@ -147,6 +151,7 @@ namespace wasm3 {
     namespace detail {
         static inline void check_error(M3Result err) {
             if (err != m3Err_none) {
+                std::cout << err << std::endl;
                 throw error(err);
             }
         }
@@ -321,7 +326,11 @@ namespace wasm3 {
             M3Result err = m3_LoadModule(runtime, m_taggedModule->module);
             detail::check_error(err);
 #if defined(LINK_WASI)
+#if defined(ESP32)
+            err = m3_LinkEspWASI(m_taggedModule->module);
+#else
             err = m3_LinkWASI(m_taggedModule->module);
+#endif
             detail::check_error(err);
 #endif
             m_taggedModule->is_loaded = true;
