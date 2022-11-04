@@ -233,6 +233,8 @@ private:
             errMsg << "Response buffer too small; need " << resLen << " bytes, have " << m_buffersize;
             throw std::runtime_error(errMsg.str().c_str());
         }
+        // update memory base pointer to cover the case where wasm memory changed during function call
+        memPtr = m_m3Runtime.get_memory(memSize, 0);
 
         return memPtr + m_outputMem;
     }
