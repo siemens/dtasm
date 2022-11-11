@@ -58,7 +58,7 @@ void print_status(const DtasmStatus status, const std::string call) {
 void print_var_names(const std::vector<std::string> &out_var_names) {
     std::cout << "t";
     for (auto it = out_var_names.begin(); it != out_var_names.end(); ++it) {
-        std::cout << ";" << *it;
+        std::cout << "," << *it;
     }
     std::cout << std::endl;
 }
@@ -78,16 +78,16 @@ void print_var_values(double t,
 
         switch (*i.second) {
             case DtasmReal: 
-                std::cout << ";" << var_values.real_values.at(*i.first);
+                std::cout << "," << var_values.real_values.at(*i.first);
                 break;
             case DtasmInt:
-                std::cout << ";" << var_values.int_values.at(*i.first);
+                std::cout << "," << var_values.int_values.at(*i.first);
                 break;
             case DtasmBool:
-                std::cout << ";" << var_values.bool_values.at(*i.first);
+                std::cout << "," << var_values.bool_values.at(*i.first);
                 break;
             case DtasmString:
-                std::cout << ";" << var_values.string_values.at(*i.first);
+                std::cout << "," << var_values.string_values.at(*i.first);
                 break;
         }
     }
