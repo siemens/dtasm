@@ -1,0 +1,16 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+{
+    "name": "dtasm DevContainer",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "extensions": [
+        "ms-vscode.cpptools",
+        "rust-lang.rust-analyzer",
+        "dtsvet.vscode-wasm"
+    ],
+    "forwardPorts": [
+        8888
+    ]
+}
