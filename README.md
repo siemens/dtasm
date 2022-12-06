@@ -21,16 +21,23 @@ The main components of this repository are:
 - [_dpend_rs_](module/dpend_rs) - Same double pendulum simulator written in Rust. 
 - [_add_rs_](module/add_rs) - Simple test module adding (or concatenating, *and*ing) two inputs of each type. 
 
-## Prerequisites
+## Getting started - Dev Containers
+The easiest way to obtain all necessary dependencies for building and running the code in this repo is using _Visual Studio Code_ with the _Dev Containers_ extension (this will also need an installation of _Docker_). Clone the repo including submodules (`git clone --recurse-submodules ...`), then open the repo folder in VS Code. It will prompt you to open inside a Dev Container, select 'Reopen in Dev Container' (if it does not prompt, select 'View' -> 'Command Palette' -> 'Dev Containers: Rebuild and Reopen in Container'). Initial building of the Dev Container and downloading of toolchains will take quite some time, wait until the process is finished and then proceed with [build](#build). 
+
+## Getting Started - Manual
+The following prerequisites are needed:
 - Linux or Windows OS on x86_64 or aarch64 platform (except for dtasm3 which also supports many smaller platforms, see [here](https://github.com/wasm3/wasm3/blob/main/docs/Hardware.md))
 - Rust, cargo and `wasm32-wasi` target for the active Rust toolchain (if using `rustup`, this can be installed by running `rustup target add wasm32-wasi`)
 - C/C++ compiler (e.g. gcc/g++)
 - GNU make
 - cmake
-- [WASI SDK 12](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-12) installed into the default location at `/opt/wasi-sdk`
+- [WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases) (version >= 12) installed into the default location at `/opt/wasi-sdk`
+- `xxd` tool (e.g. `sudo apt install xxd`).
+
+Once the prerequisites are installed, be sure to clone the repo including submodules (`git clone --recurse-submodules ...`), then proceed with the [build section](#build). 
 
 ## Build 
-Clone the repo including submodules (`git clone --recurse-submodules ...`). A top-level `Makefile` is provided for convenience to build the components. Running
+A top-level `Makefile` is provided for convenience to build the components. Running
 ```
 make deps
 ```
@@ -40,7 +47,7 @@ make
 ```
 builds _dtasmtime_, the Rust command-line example and the Rust double pendulum module. You can execute the module by running `make run-rs` afterwards. 
 
-The same can be done for the C/C++ API and double pendulum simulator by running `make cpp` followed by `make run-c`. 
+The same can be done for the C/C++ API and double pendulum simulator by running `make cpp` followed by `make run-c`. Finally, some examples using _dtasm3_ can be run with `make run-dtasm3`. 
 
 # License
 This project is released under the [MIT License](LICENSE).
